@@ -1,7 +1,10 @@
+/// <reference types="node" />
+
 import fs from "node:fs";
 import path from "node:path";
 import * as XLSX from "xlsx";
-import { Prisma, PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
+
 
 const db = new PrismaClient();
 
@@ -64,11 +67,12 @@ type HeaderName = (typeof EXPECTED_HEADERS)[number];
 type ExcelCell = string | number | boolean | Date | null | undefined;
 type ExcelRow = ExcelCell[];
 type HeaderIndexMap = Record<HeaderName, number>;
-type MutableJsonObject = {
-  [key: string]: Prisma.InputJsonValue | null;
-};
 
-type AdmissionCreateData = Prisma.AdmissionResultUncheckedCreateInput;
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+type JsonObject = {
+  [key: string]: JsonValue;
+};
 
 function normalizeText(value: ExcelCell): string {
   if (value === null || value === undefined) return "";
@@ -87,7 +91,7 @@ function normalizeNullableText(value: ExcelCell): string | null {
   return text;
 }
 
-function toJsonValue(value: unknown): Prisma.InputJsonValue | null {
+function toJsonValue(value: unknown): JsonValue {
   if (value === undefined || value === null) return null;
 
   if (
@@ -103,11 +107,11 @@ function toJsonValue(value: unknown): Prisma.InputJsonValue | null {
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => toJsonValue(item)) as Prisma.InputJsonArray;
+    return value.map((item) => toJsonValue(item));
   }
 
   if (typeof value === "object") {
-    const result: MutableJsonObject = {};
+    const result: JsonObject = {};
 
     for (const [key, nestedValue] of Object.entries(
       value as Record<string, unknown>
@@ -115,23 +119,20 @@ function toJsonValue(value: unknown): Prisma.InputJsonValue | null {
       result[key] = toJsonValue(nestedValue);
     }
 
-    return result as Prisma.InputJsonObject;
+    return result;
   }
 
   return String(value);
 }
 
-function buildRawRowObject(
-  headers: readonly string[],
-  row: ExcelRow
-): Prisma.InputJsonObject {
-  const result: MutableJsonObject = {};
+function buildRawRowObject(headers: readonly string[], row: ExcelRow): JsonObject {
+  const result: JsonObject = {};
 
   headers.forEach((header, index) => {
     result[header] = toJsonValue(row[index]);
   });
 
-  return result as Prisma.InputJsonObject;
+  return result;
 }
 
 function getHeaderIndexMap(headers: string[]): HeaderIndexMap {
@@ -180,12 +181,18 @@ function buildCreateData(params: {
   sourceSheetName: string;
   sourceRowNumber: number;
   sourceFileName: string;
-  rawRow: Prisma.InputJsonObject;
+  rawRow: JsonObject;
   row: ExcelRow;
   headerMap: HeaderIndexMap;
-}): AdmissionCreateData {
-  const { sourceSheetName, sourceRowNumber, sourceFileName, rawRow, row, headerMap } =
-    params;
+}) {
+  const {
+    sourceSheetName,
+    sourceRowNumber,
+    sourceFileName,
+    rawRow,
+    row,
+    headerMap,
+  } = params;
 
   const region = getRequiredText(row, headerMap, "지역");
   const universityName = getRequiredText(row, headerMap, "대학");
@@ -219,58 +226,53 @@ function buildCreateData(params: {
     interviewOrEssayDate: getOptionalText(row, headerMap, "논술/면접"),
     finalAnnouncement: getOptionalText(row, headerMap, "최종합격"),
 
-    // 2027학년도 모집인원
     currentHeadcountRaw: getOptionalText(row, headerMap, "인원"),
 
-// 2026학년도 (1*)
-year26RecruitmentCountRaw: getOptionalText(row, headerMap, "1모집"),
-year26ApplicantCountRaw: getOptionalText(row, headerMap, "1지원"),
-year26CompetitionRateRaw: getOptionalText(row, headerMap, "1경쟁률"),
-year26AdditionalPassCountRaw: getOptionalText(row, headerMap, "1충원"),
-year26MinSatisfiedRateRaw: getOptionalText(row, headerMap, "1최저율"),
-year26MinSatisfiedCountRaw: getOptionalText(row, headerMap, "1최저인원"),
-year26ActualCompetitionRateRaw: getOptionalText(row, headerMap, "1실경쟁률"),
-year26Score50Raw: getOptionalText(row, headerMap, "1성적1"),
-year26Score70Raw: getOptionalText(row, headerMap, "1성적2"),
-year26Converted50Raw: getOptionalText(row, headerMap, "1환산1"),
-year26Converted70Raw: getOptionalText(row, headerMap, "1환산2"),
+    year26RecruitmentCountRaw: getOptionalText(row, headerMap, "1모집"),
+    year26ApplicantCountRaw: getOptionalText(row, headerMap, "1지원"),
+    year26CompetitionRateRaw: getOptionalText(row, headerMap, "1경쟁률"),
+    year26AdditionalPassCountRaw: getOptionalText(row, headerMap, "1충원"),
+    year26MinSatisfiedRateRaw: getOptionalText(row, headerMap, "1최저율"),
+    year26MinSatisfiedCountRaw: getOptionalText(row, headerMap, "1최저인원"),
+    year26ActualCompetitionRateRaw: getOptionalText(row, headerMap, "1실경쟁률"),
+    year26Score50Raw: getOptionalText(row, headerMap, "1성적1"),
+    year26Score70Raw: getOptionalText(row, headerMap, "1성적2"),
+    year26Converted50Raw: getOptionalText(row, headerMap, "1환산1"),
+    year26Converted70Raw: getOptionalText(row, headerMap, "1환산2"),
 
-// 2025학년도 (2*)
-year25RecruitmentCountRaw: getOptionalText(row, headerMap, "2모집"),
-year25ApplicantCountRaw: getOptionalText(row, headerMap, "2지원"),
-year25CompetitionRateRaw: getOptionalText(row, headerMap, "2경쟁률"),
-year25AdditionalPassCountRaw: getOptionalText(row, headerMap, "2충원"),
-year25MinSatisfiedRateRaw: getOptionalText(row, headerMap, "2최저율"),
-year25MinSatisfiedCountRaw: getOptionalText(row, headerMap, "2최저인원"),
-year25ActualCompetitionRateRaw: getOptionalText(row, headerMap, "2실경쟁률"),
-year25Score50Raw: getOptionalText(row, headerMap, "2성적1"),
-year25Score70Raw: getOptionalText(row, headerMap, "2성적2"),
-year25Converted50Raw: getOptionalText(row, headerMap, "2환산1"),
-year25Converted70Raw: getOptionalText(row, headerMap, "2환산2"),
+    year25RecruitmentCountRaw: getOptionalText(row, headerMap, "2모집"),
+    year25ApplicantCountRaw: getOptionalText(row, headerMap, "2지원"),
+    year25CompetitionRateRaw: getOptionalText(row, headerMap, "2경쟁률"),
+    year25AdditionalPassCountRaw: getOptionalText(row, headerMap, "2충원"),
+    year25MinSatisfiedRateRaw: getOptionalText(row, headerMap, "2최저율"),
+    year25MinSatisfiedCountRaw: getOptionalText(row, headerMap, "2최저인원"),
+    year25ActualCompetitionRateRaw: getOptionalText(row, headerMap, "2실경쟁률"),
+    year25Score50Raw: getOptionalText(row, headerMap, "2성적1"),
+    year25Score70Raw: getOptionalText(row, headerMap, "2성적2"),
+    year25Converted50Raw: getOptionalText(row, headerMap, "2환산1"),
+    year25Converted70Raw: getOptionalText(row, headerMap, "2환산2"),
 
-// 2024학년도 (3*)
-year24RecruitmentCountRaw: getOptionalText(row, headerMap, "3모집"),
-year24ApplicantCountRaw: getOptionalText(row, headerMap, "3지원"),
-year24CompetitionRateRaw: getOptionalText(row, headerMap, "3경쟁률"),
-year24AdditionalPassCountRaw: getOptionalText(row, headerMap, "3충원"),
-year24MinSatisfiedRateRaw: getOptionalText(row, headerMap, "3최저율"),
-year24MinSatisfiedCountRaw: getOptionalText(row, headerMap, "3최저인원"),
-year24ActualCompetitionRateRaw: getOptionalText(row, headerMap, "3실경쟁률"),
-year24Score50Raw: getOptionalText(row, headerMap, "3성적1"),
-year24Score70Raw: getOptionalText(row, headerMap, "3성적2"),
-year24Converted50Raw: getOptionalText(row, headerMap, "3환산1"),
-year24Converted70Raw: getOptionalText(row, headerMap, "3환산2"),
+    year24RecruitmentCountRaw: getOptionalText(row, headerMap, "3모집"),
+    year24ApplicantCountRaw: getOptionalText(row, headerMap, "3지원"),
+    year24CompetitionRateRaw: getOptionalText(row, headerMap, "3경쟁률"),
+    year24AdditionalPassCountRaw: getOptionalText(row, headerMap, "3충원"),
+    year24MinSatisfiedRateRaw: getOptionalText(row, headerMap, "3최저율"),
+    year24MinSatisfiedCountRaw: getOptionalText(row, headerMap, "3최저인원"),
+    year24ActualCompetitionRateRaw: getOptionalText(row, headerMap, "3실경쟁률"),
+    year24Score50Raw: getOptionalText(row, headerMap, "3성적1"),
+    year24Score70Raw: getOptionalText(row, headerMap, "3성적2"),
+    year24Converted50Raw: getOptionalText(row, headerMap, "3환산1"),
+    year24Converted70Raw: getOptionalText(row, headerMap, "3환산2"),
 
     rawRow,
     isActive: true,
   };
 }
 
-function toUpdateData(
-  createData: AdmissionCreateData
-): Prisma.AdmissionResultUncheckedUpdateInput {
-  const { id: _id, ...rest } = createData;
-  return rest;
+type AdmissionCreateData = ReturnType<typeof buildCreateData>;
+
+function toUpdateData(createData: AdmissionCreateData) {
+  return { ...createData };
 }
 
 async function main() {
@@ -380,7 +382,7 @@ async function main() {
           collegeName,
           recruitmentUnit,
         },
-      } satisfies Prisma.AdmissionResultWhereUniqueInput;
+      };
 
       const existing = await db.admissionResult.findUnique({
         where,
