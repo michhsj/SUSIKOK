@@ -9,19 +9,24 @@ type InitialSidoOption = {
 };
 
 async function getInitialSidoOptions(): Promise<InitialSidoOption[]> {
-  const sidoList = await db.school.findMany({
-    select: { sido: true },
-    distinct: ["sido"],
-    orderBy: { sido: "asc" },
-  });
+  try {
+    const sidoList: Array<{ sido: string | null }> = await db.school.findMany({
+      select: { sido: true },
+      distinct: ["sido"],
+      orderBy: { sido: "asc" },
+    });
 
-  return sidoList
-    .map((item: { sido: string | null }) => String(item.sido ?? "").trim())
-    .filter((value: string) => value.length > 0)
-    .map((value: string) => ({
-      label: value,
-      value,
-    }));
+    return sidoList
+      .map((item: { sido: string | null }) => String(item.sido ?? "").trim())
+      .filter((value: string) => value.length > 0)
+      .map((value: string) => ({
+        label: value,
+        value,
+      }));
+  } catch (error) {
+    console.error("[signup] failed to load sido options", error);
+    return [];
+  }
 }
 
 export default async function SignupPage() {
