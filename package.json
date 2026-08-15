@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node -e \"const fs=require('fs'); const s=fs.readFileSync('src/app/(auth)/signup/page.tsx','utf8'); console.log('=== signup/page.tsx ==='); console.log(s.split('\\n').slice(12,19).join('\\n'));\" && next build",
     "start": "next start",
     "lint": "eslint",
     "import:subject-catalog": "tsx scripts/import-subject-catalog.ts"
