@@ -15,8 +15,8 @@ async function getInitialSidoOptions(): Promise<InitialSidoOption[]> {
 
   return sidoList
     .map((item: { sido: string | null }) => String(item.sido ?? "").trim())
-    .filter((value) => value.length > 0)
-    .map((value) => ({
+    .filter((value: string) => value.length > 0)
+    .map((value: string) => ({
       label: value,
       value,
     }));
