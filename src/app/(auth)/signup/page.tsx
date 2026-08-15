@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import SignupForm from "@/components/auth/SignupForm";
 import { db } from "@/lib/db";
 
