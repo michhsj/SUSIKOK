@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 const LEGACY_CONSENT_STORAGE_KEY = "susikok_signup_consents";
 const SIGNUP_FLOW_QUERY_KEY = "flow";
@@ -53,15 +53,22 @@ function updateStoredConsent(
   );
 }
 
+function getFlowIdFromLocation() {
+  if (typeof window === "undefined") return "";
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get(SIGNUP_FLOW_QUERY_KEY)?.trim() ?? "";
+}
+
 export default function PrivacyPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const flowId = searchParams.get(SIGNUP_FLOW_QUERY_KEY)?.trim() ?? "";
 
   const handleAgree = () => {
+    const flowId = getFlowIdFromLocation();
     const activeFlowId = flowId || createSignupFlowId();
+
     updateStoredConsent(activeFlowId, { privacyConsent: true });
+
     router.push(
       `/signup?${SIGNUP_FLOW_QUERY_KEY}=${encodeURIComponent(activeFlowId)}`
     );
