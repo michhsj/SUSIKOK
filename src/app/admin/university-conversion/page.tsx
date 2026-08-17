@@ -1,14 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Suspense,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+
 
 type CommonSubjectItem = {
   label: string;
@@ -839,10 +834,10 @@ function FieldLabel({
 }
 
 function UniversityConversionPageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const isEditMode = searchParams.get("mode") === "edit";
-  const editingRuleId = searchParams.get("ruleId") ?? "";
+const router = useRouter();
+const [isEditMode, setIsEditMode] = useState(false);
+const [editingRuleId, setEditingRuleId] = useState("");
+
 
   const [targetValues, setTargetValues] = useState<TargetValues>(
     initialTargetValues
@@ -1040,19 +1035,28 @@ function UniversityConversionPageContent() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!isEditMode) return;
+useEffect(() => {
+  if (typeof window === "undefined") return;
 
-    setTargetValues({
-      region: searchParams.get("region") ?? "",
-      university: searchParams.get("university") ?? "",
-      admissionType: searchParams.get("admissionType") ?? "",
-      admissionName: searchParams.get("admissionName") ?? "",
-      track: searchParams.get("track") ?? "",
-      collegeName: searchParams.get("collegeName") ?? "",
-      recruitmentUnit: searchParams.get("recruitmentUnit") ?? "",
-    });
-  }, [isEditMode, searchParams]);
+  const params = new URLSearchParams(window.location.search);
+  const nextIsEditMode = params.get("mode") === "edit";
+  const nextRuleId = params.get("ruleId") ?? "";
+
+  setIsEditMode(nextIsEditMode);
+  setEditingRuleId(nextRuleId);
+
+  if (!nextIsEditMode) return;
+
+  setTargetValues({
+    region: params.get("region") ?? "",
+    university: params.get("university") ?? "",
+    admissionType: params.get("admissionType") ?? "",
+    admissionName: params.get("admissionName") ?? "",
+    track: params.get("track") ?? "",
+    collegeName: params.get("collegeName") ?? "",
+    recruitmentUnit: params.get("recruitmentUnit") ?? "",
+  });
+}, []);
 
   useEffect(() => {
     if (!isEditMode || !editingRuleId) return;
@@ -3033,18 +3037,5 @@ function UniversityConversionPageContent() {
   );
 }
 
-export default function UniversityConversionPage() {
-  return (
-    <Suspense
-      fallback={
-        <PageShell>
-          <div className="rounded-[24px] border border-slate-200 bg-white px-6 py-5 text-sm font-medium text-slate-600">
-            페이지를 불러오는 중입니다.
-          </div>
-        </PageShell>
-      }
-    >
-      <UniversityConversionPageContent />
-    </Suspense>
-  );
-}
+export default UniversityConversionPageContent;
+
