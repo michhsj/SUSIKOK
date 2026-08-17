@@ -1,5 +1,3 @@
-// src/components/sections/home/ServiceOverviewSection.tsx
-
 const featureCards = [
   {
     id: "01",
@@ -46,25 +44,40 @@ export default function ServiceOverviewSection() {
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
         <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14">
           <div className="max-w-2xl">
-            <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-blue-800">
+            <span
+              style={{ lineHeight: "1.35" }}
+              className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-blue-800"
+            >
               Service Overview
             </span>
 
-            <h2 className="mt-5 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+            <h2
+              style={{ lineHeight: "1.62" }}
+              className="mt-7 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl"
+            >
               수시KOK 서비스 안내
             </h2>
 
-            <p className="mt-3 text-lg font-semibold text-slate-700">
+            <p
+              style={{ lineHeight: "2.36rem" }}
+              className="mt-4 text-lg font-semibold text-slate-700"
+            >
               학생부 성적 기반 대학별 환산 분석 서비스
             </p>
 
-            <p className="mt-6 text-base leading-8 text-slate-600 sm:text-lg">
+            <p
+              style={{ lineHeight: "2.7rem" }}
+              className="mt-8 text-base text-slate-600 sm:text-lg"
+            >
               수시KOK는 학생부 성적을 기반으로 대학별 환산점수를 자동
               계산하고, 대학이 발표한 기준 점수와 비교하여 지원 가능성을 보다
               체계적으로 검토할 수 있도록 돕는 서비스입니다.
             </p>
 
-            <p className="mt-5 text-base leading-8 text-slate-600 sm:text-lg">
+            <p
+              style={{ lineHeight: "2.7rem" }}
+              className="mt-7 text-base text-slate-600 sm:text-lg"
+            >
               대학마다 서로 다른 반영 방식과 기준을 고려하여, 보다 실질적인
               수시 지원 판단에 도움이 되는 분석 결과를 제공합니다.
             </p>
@@ -81,22 +94,6 @@ export default function ServiceOverviewSection() {
                   <p className="text-sm leading-7 text-slate-700">{point}</p>
                 </div>
               ))}
-            </div>
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
-                href="/about"
-                className="inline-flex h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-slate-950 via-blue-900 to-blue-700 px-6 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(30,64,175,0.18)] transition hover:translate-y-[-1px] hover:shadow-[0_18px_40px_rgba(30,64,175,0.24)]"
-              >
-                서비스 자세히 보기
-              </a>
-
-              <a
-                href="/signup"
-                className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
-              >
-                무료로 시작하기
-              </a>
             </div>
           </div>
 

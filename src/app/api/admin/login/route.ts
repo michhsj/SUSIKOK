@@ -6,7 +6,7 @@ import {
 } from "@/lib/auth/admin-session";
 
 type LoginBody = {
-  loginId?: string;
+  email?: string;
   password?: string;
 };
 
@@ -14,34 +14,34 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as LoginBody;
 
-    const loginId = body.loginId?.trim() ?? "";
+    const email = body.email?.trim() ?? "";
     const password = body.password ?? "";
 
-    if (!loginId || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { success: false, message: "아이디와 비밀번호를 입력해주세요." },
+        { success: false, message: "이메일과 비밀번호를 입력해주세요." },
         { status: 400 }
       );
     }
 
-    const adminId = process.env.ADMIN_LOGIN_ID;
+    const adminEmail = process.env.ADMIN_LOGIN_EMAIL;
     const adminPassword = process.env.ADMIN_LOGIN_PASSWORD;
 
-    if (!adminId || !adminPassword) {
+    if (!adminEmail || !adminPassword) {
       return NextResponse.json(
         { success: false, message: "관리자 계정이 설정되지 않았습니다." },
         { status: 500 }
       );
     }
 
-    if (loginId !== adminId || password !== adminPassword) {
+    if (email !== adminEmail || password !== adminPassword) {
       return NextResponse.json(
         { success: false, message: "관리자 로그인 정보가 올바르지 않습니다." },
         { status: 401 }
       );
     }
 
-    const token = createAdminSessionToken(adminId);
+    const token = createAdminSessionToken(adminEmail);
 
     const response = NextResponse.json({
       success: true,

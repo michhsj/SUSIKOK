@@ -1,3 +1,4 @@
+//src\app\api\student-records\excel\route.ts
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
@@ -22,6 +23,10 @@ type ExcelGradeRowInput = {
   standardDeviation?: unknown;
   achievement?: unknown;
   grade?: unknown;
+  enrolledStudentCount?: unknown;
+  achievementARatio?: unknown;
+  achievementBRatio?: unknown;
+  achievementCRatio?: unknown;
 };
 
 type NormalizedExcelGradeRow = {
@@ -35,6 +40,10 @@ type NormalizedExcelGradeRow = {
   standardDeviation: string;
   achievement: string;
   grade: string;
+  enrolledStudentCount: string;
+  achievementARatio: string;
+  achievementBRatio: string;
+  achievementCRatio: string;
 };
 
 type ParsedExcelGradeRow = {
@@ -50,6 +59,10 @@ type ParsedExcelGradeRow = {
   standardDeviation: number | null;
   achievement: string;
   grade: number | null;
+  enrolledStudentCount: number | null;
+  achievementARatio: number | null;
+  achievementBRatio: number | null;
+  achievementCRatio: number | null;
 };
 
 function toTrimmedString(value: unknown) {
@@ -82,7 +95,13 @@ function parseNumberValue(value: string) {
     return null;
   }
 
-  const parsed = Number(value);
+  const cleaned = value.replace(/,/g, "").trim();
+
+  if (!cleaned) {
+    return null;
+  }
+
+  const parsed = Number(cleaned);
 
   if (!Number.isFinite(parsed)) {
     return null;
@@ -197,6 +216,26 @@ export async function GET() {
           grade.grade === null || grade.grade === undefined
             ? ""
             : String(grade.grade),
+        enrolledStudentCount:
+          grade.enrolledStudentCount === null ||
+          grade.enrolledStudentCount === undefined
+            ? ""
+            : String(grade.enrolledStudentCount),
+        achievementARatio:
+          grade.achievementARatio === null ||
+          grade.achievementARatio === undefined
+            ? ""
+            : String(grade.achievementARatio),
+        achievementBRatio:
+          grade.achievementBRatio === null ||
+          grade.achievementBRatio === undefined
+            ? ""
+            : String(grade.achievementBRatio),
+        achievementCRatio:
+          grade.achievementCRatio === null ||
+          grade.achievementCRatio === undefined
+            ? ""
+            : String(grade.achievementCRatio),
       })),
     });
   } catch (err) {
@@ -243,6 +282,10 @@ export async function POST(request: Request) {
           standardDeviation: toTrimmedString(row?.standardDeviation),
           achievement: toTrimmedString(row?.achievement),
           grade: toTrimmedString(row?.grade),
+          enrolledStudentCount: toTrimmedString(row?.enrolledStudentCount),
+          achievementARatio: toTrimmedString(row?.achievementARatio),
+          achievementBRatio: toTrimmedString(row?.achievementBRatio),
+          achievementCRatio: toTrimmedString(row?.achievementCRatio),
         })
       )
       .filter((row: NormalizedExcelGradeRow) =>
@@ -273,10 +316,7 @@ export async function POST(request: Request) {
       }
 
       if (!row.credits) {
-        return error(
-          `${rowNumber}번째 행의 학점(단위수)을 입력해 주세요.`,
-          400
-        );
+        return error(`${rowNumber}번째 행의 학점을 입력해 주세요.`, 400);
       }
 
       if (!row.achievement) {
@@ -302,7 +342,7 @@ export async function POST(request: Request) {
         const credits = parseNumberValue(row.credits);
         if (credits === null || credits <= 0) {
           throw new Error(
-            `${rowNumber}번째 행의 학점(단위수)은 0보다 큰 숫자여야 합니다.`
+            `${rowNumber}번째 행의 학점은 0보다 큰 숫자여야 합니다.`
           );
         }
 
@@ -341,6 +381,60 @@ export async function POST(request: Request) {
           );
         }
 
+        const enrolledStudentCount = row.enrolledStudentCount
+          ? parseNumberValue(row.enrolledStudentCount)
+          : null;
+        if (
+          row.enrolledStudentCount &&
+          (enrolledStudentCount === null || enrolledStudentCount < 0)
+        ) {
+          throw new Error(
+            `${rowNumber}번째 행의 재적수는 0 이상 숫자여야 합니다.`
+          );
+        }
+
+        const achievementARatio = row.achievementARatio
+          ? parseNumberValue(row.achievementARatio)
+          : null;
+        if (
+          row.achievementARatio &&
+          (achievementARatio === null ||
+            achievementARatio < 0 ||
+            achievementARatio > 100)
+        ) {
+          throw new Error(
+            `${rowNumber}번째 행의 A비율은 0~100 사이 숫자여야 합니다.`
+          );
+        }
+
+        const achievementBRatio = row.achievementBRatio
+          ? parseNumberValue(row.achievementBRatio)
+          : null;
+        if (
+          row.achievementBRatio &&
+          (achievementBRatio === null ||
+            achievementBRatio < 0 ||
+            achievementBRatio > 100)
+        ) {
+          throw new Error(
+            `${rowNumber}번째 행의 B비율은 0~100 사이 숫자여야 합니다.`
+          );
+        }
+
+        const achievementCRatio = row.achievementCRatio
+          ? parseNumberValue(row.achievementCRatio)
+          : null;
+        if (
+          row.achievementCRatio &&
+          (achievementCRatio === null ||
+            achievementCRatio < 0 ||
+            achievementCRatio > 100)
+        ) {
+          throw new Error(
+            `${rowNumber}번째 행의 C비율은 0~100 사이 숫자여야 합니다.`
+          );
+        }
+
         return {
           academicTermLabel: row.academicTerm,
           ...academicTerm,
@@ -353,6 +447,13 @@ export async function POST(request: Request) {
           standardDeviation,
           achievement: row.achievement,
           grade,
+          enrolledStudentCount:
+            enrolledStudentCount === null
+              ? null
+              : Math.floor(enrolledStudentCount),
+          achievementARatio,
+          achievementBRatio,
+          achievementCRatio,
         };
       }
     );
@@ -465,6 +566,10 @@ export async function POST(request: Request) {
           standardDeviation: row.standardDeviation,
           achievement: row.achievement,
           grade: row.grade,
+          enrolledStudentCount: row.enrolledStudentCount,
+          achievementARatio: row.achievementARatio,
+          achievementBRatio: row.achievementBRatio,
+          achievementCRatio: row.achievementCRatio,
         })),
       });
 

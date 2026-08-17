@@ -1,5 +1,3 @@
-// src/components/sections/home/AnalysisGuideSection.tsx
-
 const guideCards = [
   {
     title: "환산점수란",
@@ -20,24 +18,29 @@ const guideCards = [
 
 const interpretationItems = [
   {
-    title: "안정 지원",
-    description: "기준 점수보다 여유가 있는 경우",
-    tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    title: "하향 지원",
+    description: "기준 점수보다 충분히 높은 경우로 비교적 여유 있게 검토할 수 있습니다.",
+    tone: "border-sky-200 bg-sky-50 text-sky-700",
   },
   {
-    title: "적정 지원",
-    description: "기준 점수와 유사하거나 긍정적으로 검토 가능한 경우",
+    title: "안정 지원",
+    description: "현재 성적 흐름상 보다 안정적으로 검토할 수 있는 경우입니다.",
     tone: "border-blue-200 bg-blue-50 text-blue-700",
   },
   {
-    title: "소신 지원",
-    description: "기준과 비슷하거나 다소 도전적인 경우",
-    tone: "border-amber-200 bg-amber-50 text-amber-700",
+    title: "적정 지원",
+    description: "기준 점수와 유사하거나 긍정적으로 검토 가능한 경우입니다.",
+    tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
   },
   {
     title: "도전 지원",
-    description: "기준보다 낮아 신중한 판단이 필요한 경우",
+    description: "기준보다 다소 낮아 신중한 판단이 필요한 경우입니다.",
     tone: "border-rose-200 bg-rose-50 text-rose-700",
+  },
+  {
+    title: "상향 지원",
+    description: "목표 지향적으로 검토하되 전략적 접근이 필요한 경우입니다.",
+    tone: "border-amber-200 bg-amber-50 text-amber-700",
   },
 ];
 
@@ -55,25 +58,35 @@ export default function AnalysisGuideSection() {
     >
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
         <div className="max-w-3xl">
-          <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-blue-800">
+          <span
+            style={{ lineHeight: "1.4" }}
+            className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-blue-800"
+          >
             Analysis Guide
           </span>
 
-          <h2 className="mt-5 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+          <h2
+            style={{ lineHeight: "1.55" }}
+            className="mt-7 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl"
+          >
             분석 안내
           </h2>
 
-          <p className="mt-3 text-lg font-semibold text-slate-700">
+          <p
+            style={{ lineHeight: "2.4rem" }}
+            className="mt-5 text-lg font-semibold text-slate-700"
+          >
             대학 기준 비교를 통한 지원 판단 참고 제공
           </p>
 
-          <p className="mt-6 text-base leading-8 text-slate-600 sm:text-lg">
-            수시KOK의 분석 결과는 입력한 학생부 성적을 대학별 반영 기준에 따라
-            환산한 뒤, 대학 발표 기준과 비교하여 지원 전략 수립에 참고할 수
-            있도록 제공됩니다.
+          <p
+            style={{ lineHeight: "2.8rem" }}
+            className="mt-8 whitespace-nowrap text-base text-slate-600 sm:text-lg"
+          >
+            수시KOK의 분석 결과는 입력한 학생부 성적을 대학별 반영 기준에 따라 환산한 뒤, 대학 발표 기준과 비교하여 지원 전략 수립에 참고할 수 있도록 제공됩니다.
           </p>
 
-          <div className="mt-7 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap gap-3">
             {analysisHighlights.map((item) => (
               <span
                 key={item}
@@ -106,7 +119,7 @@ export default function AnalysisGuideSection() {
           ))}
         </div>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="mt-12">
           <div className="rounded-[32px] border border-slate-200 bg-white p-7 shadow-[0_24px_70px_rgba(15,23,42,0.08)] sm:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -123,13 +136,15 @@ export default function AnalysisGuideSection() {
               </span>
             </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
               {interpretationItems.map((item) => (
                 <div
                   key={item.title}
                   className={`rounded-2xl border p-5 ${item.tone}`}
                 >
-                  <p className="text-lg font-bold">{item.title}</p>
+                  <p className="whitespace-nowrap text-lg font-bold">
+                    {item.title}
+                  </p>
                   <p className="mt-2 text-sm leading-7 text-slate-700">
                     {item.description}
                   </p>
@@ -137,47 +152,6 @@ export default function AnalysisGuideSection() {
               ))}
             </div>
           </div>
-
-          <aside className="rounded-[32px] border border-slate-200 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 p-7 text-white shadow-[0_30px_80px_rgba(15,23,42,0.24)] sm:p-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">
-              Advisory Note
-            </p>
-
-            <h3 className="mt-3 text-2xl font-bold leading-9">
-              분석 결과는 전략 수립을 위한 참고 자료입니다
-            </h3>
-
-            <p className="mt-5 text-sm leading-8 text-slate-300 sm:text-[15px]">
-              분석 결과는 수시 지원 전략 수립을 위한 참고 자료이며, 실제
-              결과는 대학별 전형 요소와 지원 상황에 따라 달라질 수 있습니다.
-            </p>
-
-            <div className="mt-7 space-y-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-                대학별 전형 기준과 반영 방식에 따라 결과는 달라질 수 있습니다.
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-                실제 지원 전략은 학생 개인 상황과 전형 요소를 함께 검토해야
-                합니다.
-              </div>
-            </div>
-
-            <div className="mt-8 flex flex-col gap-3">
-              <a
-                href="/analysis-guide"
-                className="inline-flex h-12 items-center justify-center rounded-2xl bg-white px-6 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
-              >
-                분석 기준 확인하기
-              </a>
-
-              <a
-                href="/signup"
-                className="inline-flex h-12 items-center justify-center rounded-2xl border border-white/20 bg-transparent px-6 text-sm font-semibold text-white transition hover:bg-white/5"
-              >
-                무료로 시작하기
-              </a>
-            </div>
-          </aside>
         </div>
       </div>
     </section>

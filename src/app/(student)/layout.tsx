@@ -64,7 +64,7 @@ export default async function StudentLayout({
           <Link href="/dashboard" className="flex items-center gap-3">
             <div className="flex h-10 items-center">
               <Image
-                src="/logo/susikok-logo.png"
+                src="/logo/susikok-logo-v2.png"
                 alt="수시KOK 로고"
                 width={140}
                 height={40}

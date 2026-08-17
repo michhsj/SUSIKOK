@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import {
   EntitlementStatus,
   PaymentOrderStatus,
@@ -8,6 +10,10 @@ import {
   UserRole,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  ADMIN_SESSION_COOKIE,
+  verifyAdminSessionToken,
+} from "@/lib/auth/admin-session";
 
 type StatTone = "blue" | "green" | "amber" | "pink";
 
@@ -651,6 +657,24 @@ async function getDashboardData() {
 export default async function AdminDashboardPage() {
   noStore();
 
+  const cookieStore = await cookies();
+  const adminToken = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
+  const adminSession = adminToken
+    ? verifyAdminSessionToken(adminToken)
+    : null;
+
+  if (!adminSession) {
+    redirect("/admin/login");
+  }
+
+  async function logoutAction() {
+    "use server";
+
+    const cookieStore = await cookies();
+    cookieStore.delete(ADMIN_SESSION_COOKIE);
+    redirect("/admin/login");
+  }
+
   const { stats, checks, recentActivities, hero } = await getDashboardData();
 
   return (
@@ -659,38 +683,51 @@ export default async function AdminDashboardPage() {
         <section className="relative overflow-hidden rounded-[30px] border border-blue-200 bg-white/90 p-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(59,130,246,0.10),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(16,185,129,0.08),_transparent_30%)]" />
           <div className="relative flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
-                ADMIN DASHBOARD
-              </div>
-              <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-                학생 데이터와 대학 환산 반영을
-                <br className="hidden sm:block" />
-                한 화면에서 관리하는 관리자 대시보드
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base">
-                실제 DB 기준으로 학생 업로드, 결제 주문, 활성 이용권, 입시 데이터 현황을
-                확인할 수 있도록 연결한 관리자 첫 화면입니다.
-              </p>
-            </div>
+<div className="max-w-3xl">
+  <div className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
+    ADMIN DASHBOARD
+  </div>
 
-            <div className="grid w-full gap-4 sm:grid-cols-3 xl:max-w-xl">
-              <div className="rounded-[20px] border border-blue-200 bg-blue-50/80 p-4 shadow-sm">
-                <div className="text-xs font-medium text-slate-500">오늘 업로드</div>
-                <div className="mt-2 text-2xl font-bold text-slate-900">
-                  {formatNumber(hero.todayUploads)}건
-                </div>
+  <h1 className="mt-16 whitespace-nowrap text-2xl font-bold tracking-tight leading-[1.9] text-slate-950 sm:text-3xl xl:text-4xl">
+    관리자 메인 대시보드
+  </h1>
+
+  <p className="mt-8 max-w-2xl text-sm leading-[2.1] text-slate-600 sm:text-base">
+    실제 DB 기준 학생 업로드, 결제 주문, 활성 이용권, 입시 데이터 현황을 확인할 수 있는 관리자 첫 화면입니다.
+  </p>
+</div>
+
+
+            <div className="flex w-full flex-col gap-4 xl:max-w-xl">
+              <div className="flex justify-end">
+                <form action={logoutAction}>
+                  <button
+                    type="submit"
+                    className="inline-flex h-11 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-bold text-rose-700 shadow-sm transition hover:bg-rose-100"
+                  >
+                    로그아웃
+                  </button>
+                </form>
               </div>
-              <div className="rounded-[20px] border border-emerald-200 bg-emerald-50/80 p-4 shadow-sm">
-                <div className="text-xs font-medium text-slate-500">결제 대기 주문</div>
-                <div className="mt-2 text-2xl font-bold text-slate-900">
-                  {formatNumber(hero.pendingPayments)}건
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-[20px] border border-blue-200 bg-blue-50/80 p-4 shadow-sm">
+                  <div className="text-xs font-medium text-slate-500">오늘 업로드</div>
+                  <div className="mt-2 text-2xl font-bold text-slate-900">
+                    {formatNumber(hero.todayUploads)}건
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-[20px] border border-pink-200 bg-pink-50/80 p-4 shadow-sm">
-                <div className="text-xs font-medium text-slate-500">활성 이용권</div>
-                <div className="mt-2 text-2xl font-bold text-slate-900">
-                  {formatNumber(hero.activeEntitlements)}건
+                <div className="rounded-[20px] border border-emerald-200 bg-emerald-50/80 p-4 shadow-sm">
+                  <div className="text-xs font-medium text-slate-500">결제 대기 주문</div>
+                  <div className="mt-2 text-2xl font-bold text-slate-900">
+                    {formatNumber(hero.pendingPayments)}건
+                  </div>
+                </div>
+                <div className="rounded-[20px] border border-pink-200 bg-pink-50/80 p-4 shadow-sm">
+                  <div className="text-xs font-medium text-slate-500">활성 이용권</div>
+                  <div className="mt-2 text-2xl font-bold text-slate-900">
+                    {formatNumber(hero.activeEntitlements)}건
+                  </div>
                 </div>
               </div>
             </div>

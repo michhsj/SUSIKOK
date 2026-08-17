@@ -1,42 +1,45 @@
-import Image from "next/image";
-import type { ReactNode } from "react";
-
-const companyInfo = {
-  ceoName: "홍 성 진",
-  businessNumber: "561 - 22 - 01321",
-  address: "인천 계양구 장제로 708, 한샘프라자 404호",
-  phone: "1877 - 9379",
-  email: "michhsj@naver.com",
-  hours: "10:00~18:00",
+type CompanyInfoSectionProps = {
+  logoSrc?: string;
+  ceoName?: string;
+  businessNumber?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  hours?: string;
 };
 
-function InfoIcon({ children }: { children: ReactNode }) {
+const InfoIcon = ({ children }: { children: React.ReactNode }) => {
   return (
     <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-800">
       {children}
     </span>
   );
-}
+};
 
-export default function MainFooter() {
+export default function CompanyInfoSection({
+  logoSrc = "/logo/newplanedu-logo.png",
+  ceoName = "홍 성 진",
+  businessNumber = "561 - 22 - 01321",
+  address = "인천시 계양구 장제로708, 한샘프라자 404호",
+  phone = "1877 - 9379",
+  email = "michhsj@naver.com",
+  hours = "10:00~18:00",
+}: CompanyInfoSectionProps) {
   return (
-    <footer id="company-info" className="border-t border-slate-200 bg-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <section id="company-info" className="bg-slate-50 py-16 sm:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
           <div className="grid lg:grid-cols-[280px_1fr]">
-            {/* 왼쪽 로고 / 운영시간 */}
+            {/* 왼쪽 로고 영역 */}
             <div className="flex flex-col items-center justify-center border-b border-slate-200 px-8 py-10 text-center lg:border-b-0 lg:border-r">
-              <Image
-                src="/logo/newplan_logo.png"
+              <img
+                src={logoSrc}
                 alt="뉴플랜에듀 로고"
-                width={220}
-                height={90}
-                priority
-                className="h-auto w-full max-w-[210px] object-contain"
+                className="h-auto w-full max-w-[200px] object-contain"
               />
 
-              <div className="mt-6 w-full border-t border-slate-100 pt-5">
-                <div className="flex items-center justify-center gap-2 text-[21px] font-medium text-slate-500">
+              <div className="mt-8 w-full border-t border-slate-100 pt-6">
+                <div className="flex items-center justify-center gap-2 text-sm font-medium text-slate-500">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -48,17 +51,17 @@ export default function MainFooter() {
                     <circle cx="12" cy="12" r="9" />
                     <path d="M12 7v5l3 2" />
                   </svg>
-                  <span>{companyInfo.hours}</span>
+                  <span>{hours}</span>
                 </div>
               </div>
             </div>
 
-            {/* 오른쪽 정보 표 */}
+            {/* 오른쪽 표 영역 */}
             <div className="grid grid-cols-1">
               {/* 1행 */}
               <div className="grid sm:grid-cols-2">
-                <div className="border-b border-slate-200 px-6 py-[0.68rem] sm:px-8">
-                  <div className="flex items-center gap-4">
+                <div className="border-b border-slate-200 px-6 py-6 sm:px-8">
+                  <div className="flex items-start gap-4">
                     <InfoIcon>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -73,19 +76,19 @@ export default function MainFooter() {
                       </svg>
                     </InfoIcon>
 
-                    <div className="min-w-0 overflow-x-auto">
-                      <div className="flex min-w-max items-center gap-3 whitespace-nowrap">
-                        <p className="text-xl font-bold text-slate-900">대표자명</p>
-                        <p className="text-base leading-8 text-slate-500 sm:text-lg">
-                          {companyInfo.ceoName}
-                        </p>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="text-base font-bold text-slate-900">
+                        대표자명
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-slate-500">
+                        {ceoName}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="border-b border-slate-200 px-6 py-[0.68rem] sm:border-l sm:px-8">
-                  <div className="flex items-center gap-4">
+                <div className="border-b border-slate-200 px-6 py-6 sm:border-l sm:px-8">
+                  <div className="flex items-start gap-4">
                     <InfoIcon>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -100,23 +103,21 @@ export default function MainFooter() {
                       </svg>
                     </InfoIcon>
 
-                    <div className="min-w-0 overflow-x-auto">
-                      <div className="flex min-w-max items-center gap-3 whitespace-nowrap">
-                        <p className="text-xl font-bold text-slate-900">
-                          사업자등록번호
-                        </p>
-                        <p className="text-base leading-8 text-slate-500 sm:text-lg">
-                          {companyInfo.businessNumber}
-                        </p>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="text-base font-bold text-slate-900">
+                        사업자등록번호
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-slate-500">
+                        {businessNumber}
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* 2행 */}
-              <div className="border-b border-slate-200 px-6 py-[0.68rem] sm:px-8">
-                <div className="flex items-center gap-4">
+              <div className="border-b border-slate-200 px-6 py-6 sm:px-8">
+                <div className="flex items-start gap-4">
                   <InfoIcon>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -131,21 +132,21 @@ export default function MainFooter() {
                     </svg>
                   </InfoIcon>
 
-                  <div className="min-w-0 overflow-x-auto">
-                    <div className="flex min-w-max items-center gap-3 whitespace-nowrap">
-                      <p className="text-xl font-bold text-slate-900">사업장 주소</p>
-                      <p className="text-base leading-8 text-slate-500 sm:text-lg">
-                        {companyInfo.address}
-                      </p>
-                    </div>
+                  <div className="min-w-0">
+                    <p className="text-base font-bold text-slate-900">
+                      사업장 주소
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-slate-500">
+                      {address}
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* 3행 */}
               <div className="grid sm:grid-cols-2">
-                <div className="px-6 py-[0.68rem] sm:px-8">
-                  <div className="flex items-center gap-4">
+                <div className="px-6 py-6 sm:px-8">
+                  <div className="flex items-start gap-4">
                     <InfoIcon>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -159,19 +160,19 @@ export default function MainFooter() {
                       </svg>
                     </InfoIcon>
 
-                    <div className="min-w-0 overflow-x-auto">
-                      <div className="flex min-w-max items-center gap-3 whitespace-nowrap">
-                        <p className="text-xl font-bold text-slate-900">연락처</p>
-                        <p className="text-base leading-8 text-slate-500 sm:text-lg">
-                          {companyInfo.phone}
-                        </p>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="text-base font-bold text-slate-900">
+                        연락처
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-slate-500">
+                        {phone}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-200 px-6 py-[0.68rem] sm:border-l sm:border-t-0 sm:px-8">
-                  <div className="flex items-center gap-4">
+                <div className="border-t border-slate-200 px-6 py-6 sm:border-l sm:border-t-0 sm:px-8">
+                  <div className="flex items-start gap-4">
                     <InfoIcon>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -186,22 +187,22 @@ export default function MainFooter() {
                       </svg>
                     </InfoIcon>
 
-                    <div className="min-w-0 overflow-x-auto">
-                      <div className="flex min-w-max items-center gap-3 whitespace-nowrap">
-                        <p className="text-xl font-bold text-slate-900">이메일</p>
-                        <p className="text-base leading-8 text-slate-500 sm:text-lg">
-                          {companyInfo.email}
-                        </p>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="text-base font-bold text-slate-900">
+                        이메일
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-slate-500">
+                        {email}
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            {/* 오른쪽 정보 표 끝 */}
+            {/* 오른쪽 표 영역 끝 */}
           </div>
         </div>
       </div>
-    </footer>
+    </section>
   );
 }

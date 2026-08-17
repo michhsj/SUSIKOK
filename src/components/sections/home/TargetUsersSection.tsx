@@ -1,5 +1,3 @@
-// src/components/sections/home/TargetUsersSection.tsx
-
 const userTypes = [
   {
     id: "01",
@@ -52,20 +50,27 @@ export default function TargetUsersSection() {
       className="border-y border-slate-200 bg-white"
     >
       <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
-
         {/* 헤더 */}
         <div className="max-w-3xl">
-          <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-blue-800">
+          <span
+            style={{ lineHeight: "1.5" }}
+            className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-blue-800"
+          >
             Who We Help
           </span>
 
-          <h2 className="mt-5 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+          <h2
+            style={{ lineHeight: "1.5" }}
+            className="mt-8 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl"
+          >
             이런 분들께 추천합니다
           </h2>
 
-          <p className="mt-6 text-base leading-8 text-slate-600 sm:text-lg">
-            수시KOK는 학생, 학부모, 상담교사와 같이 수시 지원 판단이 필요한
-            다양한 사용자에게 유용한 서비스를 제공합니다.
+          <p
+            style={{ lineHeight: "3rem" }}
+            className="mt-9 whitespace-nowrap text-base text-slate-600 sm:text-lg"
+          >
+            수시KOK는 학생, 학부모, 상담교사와 같이 수시 지원 판단이 필요한 다양한 사용자에게 유용한 서비스를 제공합니다.
           </p>
         </div>
 
@@ -106,10 +111,7 @@ export default function TargetUsersSection() {
 
               <ul className="mt-6 flex flex-col gap-3">
                 {user.points.map((point) => (
-                  <li
-                    key={point}
-                    className="flex items-start gap-3"
-                  >
+                  <li key={point} className="flex items-start gap-3">
                     <span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
                       ✓
                     </span>
@@ -124,7 +126,8 @@ export default function TargetUsersSection() {
 
               <a
                 href="/signup"
-                className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-slate-950 via-blue-900 to-blue-700 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(30,64,175,0.16)] transition hover:translate-y-[-1px] hover:shadow-[0_18px_40px_rgba(30,64,175,0.22)]"
+                style={{ color: "#fcd34d" }}
+                className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-slate-950 via-blue-900 to-blue-700 text-base font-bold text-yellow-300 !text-yellow-300 shadow-[0_14px_34px_rgba(30,64,175,0.16)] transition hover:translate-y-[-1px] hover:shadow-[0_18px_40px_rgba(30,64,175,0.22)]"
               >
                 회원가입 후 이용하기
               </a>

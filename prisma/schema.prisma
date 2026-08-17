@@ -6,6 +6,679 @@ datasource db {
   provider = "postgresql"
 }
 
+model School {
+  id         String   @id @default(cuid())
+  sido       String
+  sigungu    String
+  schoolName String
+  schoolCode String   @unique
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  users      User[]
+
+  @@index([sido])
+  @@index([sido, sigungu])
+  @@index([sido, sigungu, schoolName])
+}
+
+model User {
+  id                       String                           @id @default(cuid())
+  email                    String                           @unique
+  passwordHash             String
+  name                     String
+  phone                    String?
+  role                     UserRole                         @default(STUDENT)
+  schoolId                 String?
+  gradeLevel               Int?
+  termsConsent             Boolean                          @default(false)
+  privacyConsent           Boolean                          @default(false)
+  marketingConsent         Boolean                          @default(false)
+  isActive                 Boolean                          @default(true)
+  lastLoginAt              DateTime?
+  createdAt                DateTime                         @default(now())
+  updatedAt                DateTime                         @updatedAt
+  conversionRuleTestSets   ConversionRuleTestSet[]
+  hakjongFitSubmissions    HakjongFitSubmission[]
+  paymentOrders            PaymentOrder[]
+  paymentTransactions      PaymentTransaction[]
+  admissionAnalysisResults StudentAdmissionAnalysisResult[]
+  mockExamRecords          StudentMockExamRecord[]
+  mockExamSubmissions      StudentMockExamSubmission[]
+  studentRecordGrades      StudentRecordGrade[]
+  studentRecordSubmissions StudentRecordSubmission[]
+  savedRecruitmentUnits    StudentSavedRecruitmentUnit[]
+  school                   School?                          @relation(fields: [schoolId], references: [id])
+  entitlements             UserEntitlement[]
+
+  @@index([schoolId])
+  @@index([role])
+  @@index([createdAt])
+}
+
+model PhoneVerificationCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  purpose   String
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone, purpose, createdAt])
+  @@index([phone, purpose, verified])
+}
+
+model SubjectGroupOption {
+  id           String               @id @default(cuid())
+  code         String?              @unique
+  name         String
+  displayOrder Int                  @default(0)
+  isActive     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  grades       StudentRecordGrade[]
+
+  @@index([isActive, displayOrder])
+  @@index([name])
+}
+
+model CompletionTypeOption {
+  id           String               @id @default(cuid())
+  code         String?              @unique
+  name         String
+  displayOrder Int                  @default(0)
+  isActive     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  grades       StudentRecordGrade[]
+
+  @@index([isActive, displayOrder])
+  @@index([name])
+}
+
+model StudentRecordSubjectCatalog {
+  id             String   @id @default(cuid())
+  subjectGroup   String
+  completionType String
+  subjectName    String
+  displayOrder   Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([isActive, displayOrder])
+  @@index([subjectGroup, completionType])
+  @@index([subjectName])
+}
+
+model StudentRecordSubmission {
+  id          String                   @id @default(cuid())
+  userId      String
+  inputMethod StudentRecordInputMethod
+  fileName    String?
+  status      UploadStatus             @default(DRAFT)
+  isLocked    Boolean                  @default(false)
+  finalizedAt DateTime?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  grades      StudentRecordGrade[]
+  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, isLocked])
+  @@index([userId, createdAt])
+}
+
+model StudentRecordGrade {
+  id                     String                  @id @default(cuid())
+  userId                 String
+  submissionId           String
+  academicTermLabel      String
+  schoolYear             Int
+  semester               Int
+  subjectGroupOptionId   String?
+  subjectGroupSnapshot   String
+  completionTypeOptionId String?
+  completionTypeSnapshot String?
+  subjectName            String
+  credits                Float?
+  rawScore               Float?
+  averageScore           Float?
+  standardDeviation      Float?
+  achievement            String?
+  enrolledStudentCount   Int?
+  achievementARatio      Float?
+  achievementBRatio      Float?
+  achievementCRatio      Float?
+  grade                  Float?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  completionTypeOption   CompletionTypeOption?   @relation(fields: [completionTypeOptionId], references: [id])
+  subjectGroupOption     SubjectGroupOption?     @relation(fields: [subjectGroupOptionId], references: [id])
+  submission             StudentRecordSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([submissionId])
+  @@index([userId, submissionId])
+  @@index([userId, schoolYear, semester])
+  @@index([userId, subjectGroupSnapshot])
+  @@index([subjectGroupOptionId])
+  @@index([completionTypeOptionId])
+}
+
+model StudentMockExamSubmission {
+  id          String                  @id @default(cuid())
+  userId      String
+  status      UploadStatus            @default(DRAFT)
+  isLocked    Boolean                 @default(false)
+  finalizedAt DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  records     StudentMockExamRecord[]
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, isLocked])
+  @@index([userId, createdAt])
+}
+
+model StudentMockExamRecord {
+  id                    String                    @id @default(cuid())
+  userId                String
+  submissionId          String
+  examYear              Int
+  examMonth             Int
+  gradeLevel            String
+  koreanSubject         String?
+  koreanStandardScore   Float?
+  koreanPercentile      Float?
+  koreanGrade           Float?
+  mathSubject           String?
+  mathStandardScore     Float?
+  mathPercentile        Float?
+  mathGrade             Float?
+  englishGrade          Float?
+  koreanHistoryGrade    Float?
+  inquiry1Subject       String?
+  inquiry1StandardScore Float?
+  inquiry1Percentile    Float?
+  inquiry1Grade         Float?
+  inquiry2Subject       String?
+  inquiry2StandardScore Float?
+  inquiry2Percentile    Float?
+  inquiry2Grade         Float?
+  secondLanguageSubject String?
+  secondLanguageGrade   Float?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  submission            StudentMockExamSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user                  User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, examYear, examMonth, gradeLevel])
+  @@index([userId])
+  @@index([submissionId])
+  @@index([userId, submissionId])
+  @@index([userId, examYear, examMonth])
+}
+
+model PaymentOrder {
+  id           String               @id @default(cuid())
+  userId       String
+  orderId      String               @unique
+  productCode  ProductCode
+  productName  String
+  amount       Int
+  currency     String               @default("KRW")
+  provider     PaymentProvider
+  status       PaymentOrderStatus   @default(PENDING)
+  requestedAt  DateTime             @default(now())
+  paidAt       DateTime?
+  canceledAt   DateTime?
+  refundedAt   DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions PaymentTransaction[]
+  entitlements UserEntitlement[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([productCode, status])
+  @@index([provider, status])
+  @@index([requestedAt])
+}
+
+model PaymentTransaction {
+  id                    String                   @id @default(cuid())
+  paymentOrderId        String
+  userId                String
+  provider              PaymentProvider
+  providerPaymentKey    String?
+  providerTransactionId String?
+  status                PaymentTransactionStatus @default(READY)
+  amount                Int
+  approvedAt            DateTime?
+  rawResponseJson       Json?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  paymentOrder          PaymentOrder             @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
+  user                  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([paymentOrderId])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([provider])
+  @@index([providerPaymentKey])
+  @@index([providerTransactionId])
+}
+
+model UserEntitlement {
+  id                     String                 @id @default(cuid())
+  userId                 String
+  paymentOrderId         String?
+  featureCode            EntitlementFeatureCode
+  grantType              EntitlementGrantType
+  status                 EntitlementStatus      @default(ACTIVE)
+  startsAt               DateTime
+  expiresAt              DateTime
+  allowedSubmissionCount Int                    @default(1)
+  usedSubmissionCount    Int                    @default(0)
+  analysisUnlimited      Boolean                @default(true)
+  memo                   String?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  paymentOrder           PaymentOrder?          @relation(fields: [paymentOrderId], references: [id])
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status, expiresAt])
+  @@index([featureCode, status])
+  @@index([grantType, status])
+}
+
+model HakjongFitQuestion {
+  id                  String                         @id @default(cuid())
+  questionNumber      Int
+  domain              String
+  questionText        String
+  choice1Label        String
+  choice2Label        String
+  choice3Label        String
+  choice4Label        String
+  choice5Label        String
+  choice1Score        Int
+  choice2Score        Int
+  choice3Score        Int
+  choice4Score        Int
+  choice5Score        Int
+  isActive            Boolean                        @default(true)
+  version             String                         @default("v1")
+  note                String?
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  answers             HakjongFitAnswer[]
+  submissionQuestions HakjongFitSubmissionQuestion[]
+
+  @@unique([version, questionNumber])
+  @@index([version, isActive])
+  @@index([domain])
+}
+
+model HakjongFitSubmission {
+  id                     String                         @id @default(cuid())
+  userId                 String
+  version                String                         @default("v1")
+  status                 HakjongFitSubmissionStatus     @default(IN_PROGRESS)
+  totalQuestionCount     Int                            @default(100)
+  currentQuestionOrder   Int                            @default(1)
+  completedQuestionCount Int                            @default(0)
+  startedAt              DateTime                       @default(now())
+  completedAt            DateTime?
+  createdAt              DateTime                       @default(now())
+  updatedAt              DateTime                       @updatedAt
+  answers                HakjongFitAnswer[]
+  user                   User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submissionQuestions    HakjongFitSubmissionQuestion[]
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([version])
+}
+
+model HakjongFitSubmissionQuestion {
+  id           String               @id @default(cuid())
+  submissionId String
+  questionId   String
+  displayOrder Int
+  createdAt    DateTime             @default(now())
+  question     HakjongFitQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  submission   HakjongFitSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, questionId])
+  @@unique([submissionId, displayOrder])
+  @@index([submissionId, displayOrder])
+  @@index([questionId])
+}
+
+model HakjongFitAnswer {
+  id                     String               @id @default(cuid())
+  submissionId           String
+  questionId             String
+  displayOrder           Int
+  selectedChoice         Int
+  earnedScore            Int
+  questionNumberSnapshot Int
+  domainSnapshot         String
+  versionSnapshot        String
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  question               HakjongFitQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  submission             HakjongFitSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, questionId])
+  @@index([submissionId, displayOrder])
+  @@index([domainSnapshot])
+}
+
+model AdmissionResult {
+  id                             String                           @id @default(cuid())
+  admissionYear                  Int                              @default(2027)
+  sourceSheetName                String                           @default("수시통합")
+  sourceRowNumber                Int?
+  sourceFileName                 String?
+  region                         String
+  universityName                 String
+  admissionType                  String
+  admissionName                  String
+  track                          String                           @default("")
+  collegeName                    String                           @default("")
+  recruitmentUnit                String
+  admissionMethod                String?
+  studentRecordReflection        String?
+  admissionSpecialNotes          String?
+  minimumAcademicRequirement     String?
+  applicationPeriod              String?
+  firstRoundAnnouncement         String?
+  interviewOrEssayDate           String?
+  finalAnnouncement              String?
+  currentHeadcountRaw            String?
+  year26RecruitmentCountRaw      String?
+  year26ApplicantCountRaw        String?
+  year26CompetitionRateRaw       String?
+  year26AdditionalPassCountRaw   String?
+  year26MinSatisfiedRateRaw      String?
+  year26MinSatisfiedCountRaw     String?
+  year26ActualCompetitionRateRaw String?
+  year26Score50Raw               String?
+  year26Score70Raw               String?
+  year26Converted50Raw           String?
+  year26Converted70Raw           String?
+  year25RecruitmentCountRaw      String?
+  year25ApplicantCountRaw        String?
+  year25CompetitionRateRaw       String?
+  year25AdditionalPassCountRaw   String?
+  year25MinSatisfiedRateRaw      String?
+  year25MinSatisfiedCountRaw     String?
+  year25ActualCompetitionRateRaw String?
+  year25Score50Raw               String?
+  year25Score70Raw               String?
+  year25Converted50Raw           String?
+  year25Converted70Raw           String?
+  year24RecruitmentCountRaw      String?
+  year24ApplicantCountRaw        String?
+  year24CompetitionRateRaw       String?
+  year24AdditionalPassCountRaw   String?
+  year24MinSatisfiedRateRaw      String?
+  year24MinSatisfiedCountRaw     String?
+  year24ActualCompetitionRateRaw String?
+  year24Score50Raw               String?
+  year24Score70Raw               String?
+  year24Converted50Raw           String?
+  year24Converted70Raw           String?
+  rawRow                         Json?
+  isActive                       Boolean                          @default(true)
+  createdAt                      DateTime                         @default(now())
+  updatedAt                      DateTime                         @updatedAt
+  analysisResults                StudentAdmissionAnalysisResult[]
+  savedByUsers                   StudentSavedRecruitmentUnit[]
+
+  @@unique([admissionYear, region, universityName, admissionType, admissionName, track, collegeName, recruitmentUnit], name: "admissionResultNaturalKey", map: "uq_admission_result_natural_key")
+  @@index([admissionYear])
+  @@index([region])
+  @@index([universityName])
+  @@index([admissionType])
+  @@index([admissionName])
+  @@index([collegeName])
+  @@index([recruitmentUnit])
+  @@index([region, universityName])
+  @@index([region, universityName, admissionType, admissionName])
+  @@index([universityName, admissionType, admissionName])
+  @@index([track, collegeName])
+  @@index([isActive])
+}
+
+model StudentSavedRecruitmentUnit {
+  id                String          @id @default(cuid())
+  userId            String
+  admissionResultId String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  admissionResult   AdmissionResult @relation(fields: [admissionResultId], references: [id], onDelete: Cascade)
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, admissionResultId])
+  @@index([userId])
+  @@index([admissionResultId])
+}
+
+model StudentAdmissionAnalysisResult {
+  id                String          @id @default(cuid())
+  userId            String
+  admissionResultId String
+  convertedScore    Float?
+  supportLevel      SupportLevel?
+  calculatedAt      DateTime?
+  calculationMemo   String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  admissionResult   AdmissionResult @relation(fields: [admissionResultId], references: [id], onDelete: Cascade)
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, admissionResultId])
+  @@index([userId])
+  @@index([admissionResultId])
+}
+
+model ConversionRuleTestSet {
+  id          String                        @id @default(cuid())
+  userId      String
+  name        String
+  createdAt   DateTime                      @default(now())
+  updatedAt   DateTime                      @updatedAt
+  attendance  ConversionRuleTestAttendance?
+  scoreRows   ConversionRuleTestScoreRow[]
+  user        User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedRules UniversityConversionRule[]
+
+  @@unique([userId, name])
+  @@index([userId, updatedAt])
+}
+
+model ConversionRuleTestScoreRow {
+  id                     String   @id @default(cuid())
+  testSetId              String
+  sortOrder              Int
+  academicTermLabel      String
+  schoolYear             Int
+  semester               Int
+  subjectGroupSnapshot   String
+  completionTypeSnapshot String
+  subjectName            String
+  credits                Float
+  rawScore               Float?
+  averageScore           Float?
+  standardDeviation      Float?
+  achievement            String
+  grade                  Float?
+  enrolledStudentCount   Int?
+  achievementARatio      Float?
+  achievementBRatio      Float?
+  achievementCRatio      Float?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  testSet ConversionRuleTestSet @relation(fields: [testSetId], references: [id], onDelete: Cascade)
+
+  @@index([testSetId, sortOrder])
+}
+
+model ConversionRuleTestAttendance {
+  id          String                @id @default(cuid())
+  testSetId   String                @unique
+  absenceDays Float?
+  lateness    Float?
+  earlyLeave  Float?
+  outing      Float?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  testSet     ConversionRuleTestSet @relation(fields: [testSetId], references: [id], onDelete: Cascade)
+}
+
+model UniversityConversionRule {
+  id                                String                                           @id @default(cuid())
+  ruleGroupKey                      String
+  version                           Int                                              @default(1)
+  previousRuleId                    String?
+  region                            String
+  university                        String
+  admissionType                     String
+  admissionName                     String
+  track                             String
+  collegeName                       String                                           @default("")
+  recruitmentUnit                   String                                           @default("")
+  mode                              UniversityConversionRuleMode
+  action                            UniversityConversionRuleAction
+  status                            UniversityConversionRuleStatus                   @default(DRAFT)
+  isActive                          Boolean                                          @default(false)
+  applyUnitWeight                   Boolean                                          @default(true)
+  applyCommonWeight                 Boolean                                          @default(false)
+  applyConvertedScore               Boolean                                          @default(true)
+  includeCareerSubjects             Boolean                                          @default(true)
+  applyCareerBonus                  Boolean                                          @default(false)
+  includeAttendance                 Boolean                                          @default(false)
+  formulaName                       String?
+  formulaBody                       String?
+  formulaMemo                       String?
+  careerAchievementFormulaName      String?
+  careerAchievementFormulaBody      String?
+  linkedTestSetId                   String?
+  linkedTestSetName                 String?
+  linkedTestRowCount                Int                                              @default(0)
+  attendanceIncluded                Boolean                                          @default(false)
+  calculatedCommonScore             Float?
+  calculatedCareerContributionScore Float?
+  calculatedAttendanceScore         Float?
+  calculatedFinalScore              Float?
+  rawPayload                        Json?
+  draftSavedAt                      DateTime?
+  reviewRequestedAt                 DateTime?
+  activatedAt                       DateTime?
+  createdAt                         DateTime                                         @default(now())
+  updatedAt                         DateTime                                         @updatedAt
+  linkedTestSet                     ConversionRuleTestSet?                           @relation(fields: [linkedTestSetId], references: [id])
+  previousRule                      UniversityConversionRule?                        @relation("UniversityConversionRuleVersionChain", fields: [previousRuleId], references: [id])
+  nextVersions                      UniversityConversionRule[]                       @relation("UniversityConversionRuleVersionChain")
+  attendanceScoreRules              UniversityConversionRuleAttendanceRow[]
+  careerAchievementScoreRules       UniversityConversionRuleCareerAchievementScore[]
+  careerReflectionRules             UniversityConversionRuleCareerReflection[]
+  commonSubjectRules                UniversityConversionRuleCommonSubject[]
+  gradeScoreRules                   UniversityConversionRuleGradeScore[]
+
+  @@unique([ruleGroupKey, version])
+  @@index([ruleGroupKey])
+  @@index([status, isActive])
+  @@index([region, university])
+  @@index([university, admissionType, admissionName])
+  @@index([track, collegeName, recruitmentUnit])
+  @@index([linkedTestSetId])
+}
+
+model UniversityConversionRuleCommonSubject {
+  id              String                   @id @default(cuid())
+  ruleId          String
+  sortOrder       Int                      @default(0)
+  subjectLabel    String
+  reflectionCount Int                      @default(0)
+  weightPercent   Float                    @default(100)
+  useAllSubjects  Boolean                  @default(false)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  rule            UniversityConversionRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, sortOrder])
+  @@index([ruleId, subjectLabel])
+}
+
+model UniversityConversionRuleGradeScore {
+  id        String                   @id @default(cuid())
+  ruleId    String
+  grade     Int
+  score     Float
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+  rule      UniversityConversionRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, grade])
+  @@index([ruleId])
+}
+
+model UniversityConversionRuleCareerReflection {
+  id              String                   @id @default(cuid())
+  ruleId          String
+  sortOrder       Int                      @default(0)
+  subjectLabel    String
+  reflectionCount Int                      @default(0)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  rule            UniversityConversionRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, sortOrder])
+  @@index([ruleId, subjectLabel])
+}
+
+model UniversityConversionRuleCareerAchievementScore {
+  id               String                   @id @default(cuid())
+  ruleId           String
+  achievementLevel String
+  score            Float
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  rule             UniversityConversionRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, achievementLevel])
+  @@index([ruleId])
+}
+
+model UniversityConversionRuleAttendanceRow {
+  id        String                                  @id @default(cuid())
+  ruleId    String
+  sortOrder Int                                     @default(0)
+  labelType UniversityConversionAttendanceLabelType
+  label     String?
+  upper     Int?
+  lower     Int?
+  score     Float
+  createdAt DateTime                                @default(now())
+  updatedAt DateTime                                @updatedAt
+  rule      UniversityConversionRule                @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, sortOrder])
+}
+
 enum UserRole {
   STUDENT
   PARENT
@@ -82,540 +755,26 @@ enum SupportLevel {
   DOWNWARD
 }
 
-model School {
-  id         String   @id @default(cuid())
-  sido       String
-  sigungu    String
-  schoolName String
-  schoolCode String   @unique
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  users User[]
-
-  @@index([sido])
-  @@index([sido, sigungu])
-  @@index([sido, sigungu, schoolName])
+enum UniversityConversionRuleMode {
+  CREATE
+  EDIT
 }
 
-model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  passwordHash     String
-  name             String
-  phone            String?
-  role             UserRole  @default(STUDENT)
-  schoolId         String?
-  gradeLevel       Int?
-  termsConsent     Boolean   @default(false)
-  privacyConsent   Boolean   @default(false)
-  marketingConsent Boolean   @default(false)
-  isActive         Boolean   @default(true)
-  lastLoginAt      DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  school School? @relation(fields: [schoolId], references: [id], onDelete: SetNull)
-
-  studentRecordSubmissions StudentRecordSubmission[]
-  studentRecordGrades      StudentRecordGrade[]
-  mockExamSubmissions      StudentMockExamSubmission[]
-  mockExamRecords          StudentMockExamRecord[]
-
-  paymentOrders            PaymentOrder[]
-  paymentTransactions      PaymentTransaction[]
-  entitlements             UserEntitlement[]
-  hakjongFitSubmissions    HakjongFitSubmission[]
-  savedRecruitmentUnits    StudentSavedRecruitmentUnit[]
-  admissionAnalysisResults StudentAdmissionAnalysisResult[]
-
-  @@index([schoolId])
-  @@index([role])
-  @@index([createdAt])
+enum UniversityConversionRuleAction {
+  DRAFT
+  REVIEW
+  ACTIVATE
 }
 
-model PhoneVerificationCode {
-  id        String   @id @default(cuid())
-  phone     String
-  code      String
-  purpose   String
-  verified  Boolean  @default(false)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([phone, purpose, createdAt])
-  @@index([phone, purpose, verified])
+enum UniversityConversionRuleStatus {
+  DRAFT
+  REVIEW_REQUESTED
+  ACTIVE
+  INACTIVE
 }
 
-model SubjectGroupOption {
-  id           String   @id @default(cuid())
-  code         String?  @unique
-  name         String
-  displayOrder Int      @default(0)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  grades StudentRecordGrade[]
-
-  @@index([isActive, displayOrder])
-  @@index([name])
-}
-
-model CompletionTypeOption {
-  id           String   @id @default(cuid())
-  code         String?  @unique
-  name         String
-  displayOrder Int      @default(0)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  grades StudentRecordGrade[]
-
-  @@index([isActive, displayOrder])
-  @@index([name])
-}
-
-model StudentRecordSubjectCatalog {
-  id             String   @id @default(cuid())
-  subjectGroup   String
-  completionType String
-  subjectName    String
-  displayOrder   Int      @default(0)
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([isActive, displayOrder])
-  @@index([subjectGroup, completionType])
-  @@index([subjectName])
-}
-
-model StudentRecordSubmission {
-  id          String                   @id @default(cuid())
-  userId      String
-  inputMethod StudentRecordInputMethod
-  fileName    String?
-  status      UploadStatus             @default(DRAFT)
-  isLocked    Boolean                  @default(false)
-  finalizedAt DateTime?
-  createdAt   DateTime                 @default(now())
-  updatedAt   DateTime                 @updatedAt
-
-  user   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  grades StudentRecordGrade[]
-
-  @@index([userId])
-  @@index([userId, status])
-  @@index([userId, isLocked])
-  @@index([userId, createdAt])
-}
-
-model StudentRecordGrade {
-  id           String @id @default(cuid())
-  userId       String
-  submissionId String
-
-  academicTermLabel String
-  schoolYear        Int
-  semester          Int
-
-  subjectGroupOptionId String?
-  subjectGroupSnapshot String
-
-  completionTypeOptionId String?
-  completionTypeSnapshot String?
-
-  subjectName       String
-  credits           Float?
-  rawScore          Float?
-  averageScore      Float?
-  standardDeviation Float?
-  achievement       String?
-  grade             Float?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  submission           StudentRecordSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  subjectGroupOption   SubjectGroupOption?     @relation(fields: [subjectGroupOptionId], references: [id], onDelete: SetNull)
-  completionTypeOption CompletionTypeOption?   @relation(fields: [completionTypeOptionId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([submissionId])
-  @@index([userId, submissionId])
-  @@index([userId, schoolYear, semester])
-  @@index([userId, subjectGroupSnapshot])
-  @@index([subjectGroupOptionId])
-  @@index([completionTypeOptionId])
-}
-
-model StudentMockExamSubmission {
-  id          String       @id @default(cuid())
-  userId      String
-  status      UploadStatus @default(DRAFT)
-  isLocked    Boolean      @default(false)
-  finalizedAt DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  user    User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  records StudentMockExamRecord[]
-
-  @@index([userId])
-  @@index([userId, status])
-  @@index([userId, isLocked])
-  @@index([userId, createdAt])
-}
-
-model StudentMockExamRecord {
-  id           String @id @default(cuid())
-  userId       String
-  submissionId String
-
-  examYear   Int
-  examMonth  Int
-  gradeLevel String
-
-  koreanSubject       String?
-  koreanStandardScore Float?
-  koreanPercentile    Float?
-  koreanGrade         Float?
-
-  mathSubject       String?
-  mathStandardScore Float?
-  mathPercentile    Float?
-  mathGrade         Float?
-
-  englishGrade       Float?
-  koreanHistoryGrade Float?
-
-  inquiry1Subject       String?
-  inquiry1StandardScore Float?
-  inquiry1Percentile    Float?
-  inquiry1Grade         Float?
-
-  inquiry2Subject       String?
-  inquiry2StandardScore Float?
-  inquiry2Percentile    Float?
-  inquiry2Grade         Float?
-
-  secondLanguageSubject String?
-  secondLanguageGrade   Float?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user       User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  submission StudentMockExamSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, examYear, examMonth, gradeLevel])
-  @@index([userId])
-  @@index([submissionId])
-  @@index([userId, submissionId])
-  @@index([userId, examYear, examMonth])
-}
-
-model PaymentOrder {
-  id          String             @id @default(cuid())
-  userId      String
-  orderId     String             @unique
-  productCode ProductCode
-  productName String
-  amount      Int
-  currency    String             @default("KRW")
-  provider    PaymentProvider
-  status      PaymentOrderStatus @default(PENDING)
-  requestedAt DateTime           @default(now())
-  paidAt      DateTime?
-  canceledAt  DateTime?
-  refundedAt  DateTime?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-
-  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions PaymentTransaction[]
-  entitlements UserEntitlement[]
-
-  @@index([userId])
-  @@index([userId, status])
-  @@index([productCode, status])
-  @@index([provider, status])
-  @@index([requestedAt])
-}
-
-model PaymentTransaction {
-  id                    String                   @id @default(cuid())
-  paymentOrderId        String
-  userId                String
-  provider              PaymentProvider
-  providerPaymentKey    String?
-  providerTransactionId String?
-  status                PaymentTransactionStatus @default(READY)
-  amount                Int
-  approvedAt            DateTime?
-  rawResponseJson       Json?
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
-
-  paymentOrder PaymentOrder @relation(fields: [paymentOrderId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([paymentOrderId])
-  @@index([userId])
-  @@index([userId, status])
-  @@index([provider])
-  @@index([providerPaymentKey])
-  @@index([providerTransactionId])
-}
-
-model UserEntitlement {
-  id                     String                 @id @default(cuid())
-  userId                 String
-  paymentOrderId         String?
-  featureCode            EntitlementFeatureCode
-  grantType              EntitlementGrantType
-  status                 EntitlementStatus      @default(ACTIVE)
-  startsAt               DateTime
-  expiresAt              DateTime
-  allowedSubmissionCount Int                    @default(1)
-  usedSubmissionCount    Int                    @default(0)
-  analysisUnlimited      Boolean                @default(true)
-  memo                   String?
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  paymentOrder PaymentOrder? @relation(fields: [paymentOrderId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([userId, status, expiresAt])
-  @@index([featureCode, status])
-  @@index([grantType, status])
-}
-
-model HakjongFitQuestion {
-  id             String @id @default(cuid())
-  questionNumber Int
-  domain         String
-  questionText   String
-
-  choice1Label String
-  choice2Label String
-  choice3Label String
-  choice4Label String
-  choice5Label String
-
-  choice1Score Int
-  choice2Score Int
-  choice3Score Int
-  choice4Score Int
-  choice5Score Int
-
-  isActive Boolean @default(true)
-  version  String  @default("v1")
-  note     String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  answers             HakjongFitAnswer[]
-  submissionQuestions HakjongFitSubmissionQuestion[]
-
-  @@unique([version, questionNumber])
-  @@index([version, isActive])
-  @@index([domain])
-}
-
-model HakjongFitSubmission {
-  id      String                     @id @default(cuid())
-  userId  String
-  version String                     @default("v1")
-  status  HakjongFitSubmissionStatus @default(IN_PROGRESS)
-
-  totalQuestionCount     Int @default(100)
-  currentQuestionOrder   Int @default(1)
-  completedQuestionCount Int @default(0)
-
-  startedAt   DateTime  @default(now())
-  completedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user                User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  answers             HakjongFitAnswer[]
-  submissionQuestions HakjongFitSubmissionQuestion[]
-
-  @@index([userId, status])
-  @@index([userId, createdAt])
-  @@index([version])
-}
-
-model HakjongFitSubmissionQuestion {
-  id           String @id @default(cuid())
-  submissionId String
-  questionId   String
-  displayOrder Int
-
-  createdAt DateTime @default(now())
-
-  submission HakjongFitSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  question   HakjongFitQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@unique([submissionId, questionId])
-  @@unique([submissionId, displayOrder])
-  @@index([submissionId, displayOrder])
-  @@index([questionId])
-}
-
-model HakjongFitAnswer {
-  id           String @id @default(cuid())
-  submissionId String
-  questionId   String
-
-  displayOrder   Int
-  selectedChoice Int
-  earnedScore    Int
-
-  questionNumberSnapshot Int
-  domainSnapshot         String
-  versionSnapshot        String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  submission HakjongFitSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  question   HakjongFitQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@unique([submissionId, questionId])
-  @@index([submissionId, displayOrder])
-  @@index([domainSnapshot])
-}
-
-model AdmissionResult {
-  id String @id @default(cuid())
-
-  admissionYear Int @default(2027)
-
-  sourceSheetName String  @default("수시통합")
-  sourceRowNumber Int?
-  sourceFileName  String?
-
-  region          String
-  universityName  String
-  admissionType   String
-  admissionName   String
-  track           String @default("")
-  collegeName     String @default("")
-  recruitmentUnit String
-
-  admissionMethod            String?
-  studentRecordReflection    String?
-  admissionSpecialNotes      String?
-  minimumAcademicRequirement String?
-  applicationPeriod          String?
-  firstRoundAnnouncement     String?
-  interviewOrEssayDate       String?
-  finalAnnouncement          String?
-
-  currentHeadcountRaw String?
-
-  year26RecruitmentCountRaw      String?
-  year26ApplicantCountRaw        String?
-  year26CompetitionRateRaw       String?
-  year26AdditionalPassCountRaw   String?
-  year26MinSatisfiedRateRaw      String?
-  year26MinSatisfiedCountRaw     String?
-  year26ActualCompetitionRateRaw String?
-  year26Score50Raw               String?
-  year26Score70Raw               String?
-  year26Converted50Raw           String?
-  year26Converted70Raw           String?
-
-  year25RecruitmentCountRaw      String?
-  year25ApplicantCountRaw        String?
-  year25CompetitionRateRaw       String?
-  year25AdditionalPassCountRaw   String?
-  year25MinSatisfiedRateRaw      String?
-  year25MinSatisfiedCountRaw     String?
-  year25ActualCompetitionRateRaw String?
-  year25Score50Raw               String?
-  year25Score70Raw               String?
-  year25Converted50Raw           String?
-  year25Converted70Raw           String?
-
-  year24RecruitmentCountRaw      String?
-  year24ApplicantCountRaw        String?
-  year24CompetitionRateRaw       String?
-  year24AdditionalPassCountRaw   String?
-  year24MinSatisfiedRateRaw      String?
-  year24MinSatisfiedCountRaw     String?
-  year24ActualCompetitionRateRaw String?
-  year24Score50Raw               String?
-  year24Score70Raw               String?
-  year24Converted50Raw           String?
-  year24Converted70Raw           String?
-
-  rawRow Json?
-
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  savedByUsers    StudentSavedRecruitmentUnit[]
-  analysisResults StudentAdmissionAnalysisResult[]
-
-  @@unique([admissionYear, region, universityName, admissionType, admissionName, track, collegeName, recruitmentUnit], name: "admissionResultNaturalKey", map: "uq_admission_result_natural_key")
-  @@index([admissionYear])
-  @@index([region])
-  @@index([universityName])
-  @@index([admissionType])
-  @@index([admissionName])
-  @@index([collegeName])
-  @@index([recruitmentUnit])
-  @@index([region, universityName])
-  @@index([region, universityName, admissionType, admissionName])
-  @@index([universityName, admissionType, admissionName])
-  @@index([track, collegeName])
-  @@index([isActive])
-}
-
-model StudentSavedRecruitmentUnit {
-  id                String   @id @default(cuid())
-  userId            String
-  admissionResultId String
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  admissionResult AdmissionResult @relation(fields: [admissionResultId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, admissionResultId])
-  @@index([userId])
-  @@index([admissionResultId])
-}
-
-model StudentAdmissionAnalysisResult {
-  id                String @id @default(cuid())
-  userId            String
-  admissionResultId String
-
-  convertedScore  Float?
-  supportLevel    SupportLevel?
-  calculatedAt    DateTime?
-  calculationMemo String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  admissionResult AdmissionResult @relation(fields: [admissionResultId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, admissionResultId])
-  @@index([userId])
-  @@index([admissionResultId])
+enum UniversityConversionAttendanceLabelType {
+  FIXED
+  RANGE
+  ABOVE
 }

@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 type MessageTone = "success" | "error" | "info";
+
 type PageMessage = {
   tone: MessageTone;
   text: string;
@@ -12,7 +13,7 @@ type PageMessage = {
 export default function AdminLoginForm() {
   const router = useRouter();
 
-  const [loginId, setLoginId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageMessage, setPageMessage] = useState<PageMessage>(null);
@@ -20,10 +21,10 @@ export default function AdminLoginForm() {
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!loginId.trim() || !password.trim()) {
+    if (!email.trim() || !password.trim()) {
       setPageMessage({
         tone: "error",
-        text: "아이디와 비밀번호를 모두 입력해주세요.",
+        text: "이메일과 비밀번호를 모두 입력해주세요.",
       });
       return;
     }
@@ -37,7 +38,7 @@ export default function AdminLoginForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ loginId, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       const result = await response.json();
@@ -56,8 +57,8 @@ export default function AdminLoginForm() {
       });
 
       setTimeout(() => {
-        router.push("/admin");
-      }, 500);
+        router.replace("/admin");
+      }, 300);
     } catch (error) {
       console.error("[AdminLoginForm] 로그인 오류:", error);
       setPageMessage({
@@ -89,15 +90,15 @@ export default function AdminLoginForm() {
       <div className="space-y-5">
         <div>
           <label className="mb-2 block text-sm font-semibold text-slate-700">
-            관리자 아이디
+            관리자 이메일
           </label>
           <input
-            type="text"
-            value={loginId}
-            onChange={(e) => setLoginId(e.target.value)}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900"
-            placeholder="관리자 아이디"
-            autoComplete="username"
+            placeholder="관리자 이메일"
+            autoComplete="email"
           />
         </div>
 

@@ -1,25 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
-  prisma?: PrismaClient;
-  prismaPool?: Pool;
+  prisma: PrismaClient | undefined;
 };
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL || process.env.DIRECT_URL;
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL 환경변수가 설정되어 있지 않습니다.");
+  throw new Error("DATABASE_URL 또는 DIRECT_URL이 설정되어 있어야 합니다.");
 }
 
-const pool =
-  globalForPrisma.prismaPool ??
-  new Pool({
-    connectionString,
-  });
-
-const adapter = new PrismaPg(pool);
+const adapter = new PrismaPg({
+  connectionString,
+});
 
 export const prisma =
   globalForPrisma.prisma ??
@@ -30,5 +24,4 @@ export const prisma =
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
-  globalForPrisma.prismaPool = pool;
 }
