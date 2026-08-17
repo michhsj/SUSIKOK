@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 type CommonSubjectItem = {
   label: string;
@@ -832,7 +838,7 @@ function FieldLabel({
   );
 }
 
-export default function UniversityConversionPage() {
+function UniversityConversionPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isEditMode = searchParams.get("mode") === "edit";
@@ -1059,7 +1065,9 @@ export default function UniversityConversionPage() {
 
       try {
         const response = await fetch(
-          `/api/admin/university-conversion?ruleId=${encodeURIComponent(editingRuleId)}`,
+          `/api/admin/university-conversion?ruleId=${encodeURIComponent(
+            editingRuleId
+          )}`,
           {
             method: "GET",
             cache: "no-store",
@@ -1069,7 +1077,9 @@ export default function UniversityConversionPage() {
         const json = (await response.json()) as RuleDetailApiResponse;
 
         if (!response.ok || !json.success || !json.data) {
-          throw new Error(json.message || "수정 대상 환산규칙을 불러오지 못했습니다.");
+          throw new Error(
+            json.message || "수정 대상 환산규칙을 불러오지 못했습니다."
+          );
         }
 
         if (!mounted) return;
@@ -1526,7 +1536,10 @@ export default function UniversityConversionPage() {
     }));
   }
 
-  function handleChangeCommonReflectionCount(subjectLabel: string, value: string) {
+  function handleChangeCommonReflectionCount(
+    subjectLabel: string,
+    value: string
+  ) {
     if (!commonSubjectSelections[subjectLabel]) {
       return;
     }
@@ -2173,7 +2186,8 @@ export default function UniversityConversionPage() {
                 수정 모드로 진입했습니다.
               </div>
               <p className="mt-1 text-sm text-blue-700">
-                ruleId: {editingRuleId || "-"} / 저장된 환산규칙 상세값을 ruleId 기준으로 불러와 수정할 수 있습니다.
+                ruleId: {editingRuleId || "-"} / 저장된 환산규칙 상세값을 ruleId
+                기준으로 불러와 수정할 수 있습니다.
               </p>
             </div>
 
@@ -2220,7 +2234,8 @@ export default function UniversityConversionPage() {
             <span className="font-semibold text-slate-800">
               지역, 대학, 전형유형, 전형명, 계열
             </span>
-            입니다. 단과대학과 모집단위는 선택값이며, 상위 선택을 변경하면 하위 선택값은 자동 초기화됩니다.
+            입니다. 단과대학과 모집단위는 선택값이며, 상위 선택을 변경하면
+            하위 선택값은 자동 초기화됩니다.
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -2273,7 +2288,8 @@ export default function UniversityConversionPage() {
                 }
                 options={admissionNameOptions}
                 disabled={
-                  !targetValues.admissionType || admissionNameOptions.length === 0
+                  !targetValues.admissionType ||
+                  admissionNameOptions.length === 0
                 }
               />
             </div>
@@ -2351,11 +2367,16 @@ export default function UniversityConversionPage() {
               <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 공통과목 반영점수는 선택된 과목에 대해{" "}
                 <span className="font-semibold text-slate-800">
-                  Σ(((과목별 환산점수 × 과목별 이수단위) / 과목별 이수단위 합) × (과목별 가중치 / 100))
+                  Σ(((과목별 환산점수 × 과목별 이수단위) / 과목별 이수단위 합) ×
+                  (과목별 가중치 / 100))
                 </span>
-                를 계산한 뒤, 결과를 100점 만점 기준으로 환산하여 최종 공통과목 반영점수로
-                적용합니다. 가중치 적용이 OFF이면 각 과목 가중치는 100으로 간주되어
-                <span className="font-semibold text-slate-800"> (가중치 / 100) = 1</span>
+                를 계산한 뒤, 결과를 100점 만점 기준으로 환산하여 최종
+                공통과목 반영점수로 적용합니다. 가중치 적용이 OFF이면 각 과목
+                가중치는 100으로 간주되어
+                <span className="font-semibold text-slate-800">
+                  {" "}
+                  (가중치 / 100) = 1
+                </span>
                 로 처리됩니다.
               </div>
 
@@ -2647,9 +2668,9 @@ export default function UniversityConversionPage() {
                   placeholder="예: A=1등급, B=3등급, C=5등급 / 또는 대학이 제시한 성취도 환산식 계산 기준을 입력"
                 />
                 <p className="text-xs leading-6 text-slate-500">
-                  진로선택 반영여부가 OFF이면 입력할 수 없습니다. 현재 자동 계산은
-                  A/B/C 점수 입력값을 기준으로 동작하며, 이 영역은 대학별 환산식
-                  메모 및 저장용 입력창으로 사용됩니다.
+                  진로선택 반영여부가 OFF이면 입력할 수 없습니다. 현재 자동
+                  계산은 A/B/C 점수 입력값을 기준으로 동작하며, 이 영역은
+                  대학별 환산식 메모 및 저장용 입력창으로 사용됩니다.
                 </p>
               </div>
             </div>
@@ -2807,7 +2828,9 @@ export default function UniversityConversionPage() {
                     </div>
                     <div
                       className={`text-[22px] font-bold tracking-tight ${
-                        item.tone === "blue" ? "text-blue-700" : "text-slate-900"
+                        item.tone === "blue"
+                          ? "text-blue-700"
+                          : "text-slate-900"
                       }`}
                     >
                       {item.value}
@@ -2833,9 +2856,14 @@ export default function UniversityConversionPage() {
           <div className="space-y-4">
             <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               <span className="font-semibold">적용 방식 안내:</span> 아래{" "}
-              <span className="font-semibold">계산식 이름 / 계산식 요약 / 계산식 상세 / 보조 메모</span>
+              <span className="font-semibold">
+                계산식 이름 / 계산식 요약 / 계산식 상세 / 보조 메모
+              </span>
               는 저장 시 payload에 함께 저장되지만, 현재 페이지의{" "}
-              <span className="font-semibold">commonScore / careerContributionScore / attendanceScore / finalScore</span>
+              <span className="font-semibold">
+                commonScore / careerContributionScore / attendanceScore /
+                finalScore
+              </span>
               계산 로직에서 직접 해석되거나 실행되지는 않습니다.
             </div>
 
@@ -2896,17 +2924,47 @@ export default function UniversityConversionPage() {
                 계산 가이드
               </div>
               <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                <li>• 환산점수 적용 ON이면 공통교과는 등급 대신 환산점수표를 사용합니다.</li>
-                <li>• 공통과목 반영점수는 Σ(((환산점수 × 이수단위) / 이수단위 합) × (가중치 / 100)) 기준으로 계산합니다.</li>
-                <li>• 이수단위반영 OFF이면 각 과목의 이수단위를 1로 간주합니다.</li>
-                <li>• 공통과목 가중치 적용 OFF이면 각 과목의 가중치를 100으로 간주합니다.</li>
-                <li>• 공통과목은 반영 여부가 체크된 교과만 계산에 포함합니다.</li>
-                <li>• 전과목 ON이면 해당 교과의 선택 가능한 과목 전체를 반영합니다.</li>
-                <li>• 공통/진로 과목 선별 시 성적이 같으면 이수단위가 높은 과목을 우선 반영합니다.</li>
-                <li>• 진로선택 가산점 계산 OFF이면 진로선택 과목도 일반 반영점수처럼 계산합니다.</li>
-                <li>• 진로선택 가산점 계산 ON이면 진로선택 점수를 총점 가산 항목으로 해석합니다.</li>
-                <li>• 출결 반영여부 OFF이면 출결 데이터가 있어도 계산에 포함하지 않습니다.</li>
-                <li>• 환산 계산식 입력 영역은 현재 계산 엔진이 직접 읽지 않으며 저장/설명용 메모로만 사용됩니다.</li>
+                <li>
+                  • 환산점수 적용 ON이면 공통교과는 등급 대신 환산점수표를
+                  사용합니다.
+                </li>
+                <li>
+                  • 공통과목 반영점수는 Σ(((환산점수 × 이수단위) / 이수단위 합) ×
+                  (가중치 / 100)) 기준으로 계산합니다.
+                </li>
+                <li>
+                  • 이수단위반영 OFF이면 각 과목의 이수단위를 1로 간주합니다.
+                </li>
+                <li>
+                  • 공통과목 가중치 적용 OFF이면 각 과목의 가중치를 100으로
+                  간주합니다.
+                </li>
+                <li>
+                  • 공통과목은 반영 여부가 체크된 교과만 계산에 포함합니다.
+                </li>
+                <li>
+                  • 전과목 ON이면 해당 교과의 선택 가능한 과목 전체를 반영합니다.
+                </li>
+                <li>
+                  • 공통/진로 과목 선별 시 성적이 같으면 이수단위가 높은 과목을
+                  우선 반영합니다.
+                </li>
+                <li>
+                  • 진로선택 가산점 계산 OFF이면 진로선택 과목도 일반 반영점수처럼
+                  계산합니다.
+                </li>
+                <li>
+                  • 진로선택 가산점 계산 ON이면 진로선택 점수를 총점 가산 항목으로
+                  해석합니다.
+                </li>
+                <li>
+                  • 출결 반영여부 OFF이면 출결 데이터가 있어도 계산에 포함하지
+                  않습니다.
+                </li>
+                <li>
+                  • 환산 계산식 입력 영역은 현재 계산 엔진이 직접 읽지 않으며
+                  저장/설명용 메모로만 사용됩니다.
+                </li>
               </ul>
             </div>
           </div>
@@ -2972,5 +3030,21 @@ export default function UniversityConversionPage() {
         </button>
       </footer>
     </PageShell>
+  );
+}
+
+export default function UniversityConversionPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageShell>
+          <div className="rounded-[24px] border border-slate-200 bg-white px-6 py-5 text-sm font-medium text-slate-600">
+            페이지를 불러오는 중입니다.
+          </div>
+        </PageShell>
+      }
+    >
+      <UniversityConversionPageContent />
+    </Suspense>
   );
 }
