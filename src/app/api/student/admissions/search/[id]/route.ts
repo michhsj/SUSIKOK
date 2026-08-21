@@ -5,7 +5,7 @@ import {
   Prisma,
   UniversityConversionRuleStatus,
 } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { getSupportLevelLabel } from "@/lib/student/support-level";
 import { calculateUniversityConversionSummaryFromTestSet } from "@/lib/university-conversion/calculate-rule-summary";
@@ -127,6 +127,13 @@ type StudentAttendanceRow = {
   updatedAt: Date;
 };
 
+type CalculateUniversityConversionInput = Parameters<
+  typeof calculateUniversityConversionSummaryFromTestSet
+>[0];
+
+type CalculateUniversityConversionPayload =
+  CalculateUniversityConversionInput["payload"];
+
 const RULE_SPECIFICITY_PRIORITY_KEYS = [
   "recruitmentUnit",
   "collegeName",
@@ -137,11 +144,6 @@ const RULE_SPECIFICITY_PRIORITY_KEYS = [
 function toStringValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   return String(value).trim();
-}
-
-function toNullableString(value: unknown): string | null {
-  const text = toStringValue(value);
-  return text ? text : null;
 }
 
 function toDisplayText(value: unknown): string {
@@ -287,19 +289,21 @@ function buildCharts(
   };
 }
 
-function hasText(value: unknown) {
+function hasText(value: unknown): boolean {
   return toStringValue(value).length > 0;
 }
 
-function matchesRuleToTarget(rule: RuleCandidate, target: RuleTargetScope) {
+function matchesRuleToTarget(rule: RuleCandidate, target: RuleTargetScope): boolean {
   if (rule.region !== target.region) return false;
   if (rule.university !== target.university) return false;
   if (rule.admissionType !== target.admissionType) return false;
 
-  const optionalKeys: Array<keyof Pick<
-    RuleTargetScope,
-    "admissionName" | "track" | "collegeName" | "recruitmentUnit"
-  >> = ["admissionName", "track", "collegeName", "recruitmentUnit"];
+  const optionalKeys: Array<
+    keyof Pick<
+      RuleTargetScope,
+      "admissionName" | "track" | "collegeName" | "recruitmentUnit"
+    >
+  > = ["admissionName", "track", "collegeName", "recruitmentUnit"];
 
   for (const key of optionalKeys) {
     const ruleValue = toStringValue(rule[key]);
@@ -313,13 +317,13 @@ function matchesRuleToTarget(rule: RuleCandidate, target: RuleTargetScope) {
   return true;
 }
 
-function getRuleSpecificityTuple(rule: RuleCandidate) {
+function getRuleSpecificityTuple(rule: RuleCandidate): number[] {
   return RULE_SPECIFICITY_PRIORITY_KEYS.map((key) =>
     hasText(rule[key]) ? 1 : 0,
   );
 }
 
-function compareRulesBySpecificity(a: RuleCandidate, b: RuleCandidate) {
+function compareRulesBySpecificity(a: RuleCandidate, b: RuleCandidate): number {
   const tupleA = getRuleSpecificityTuple(a);
   const tupleB = getRuleSpecificityTuple(b);
 
@@ -372,26 +376,32 @@ function mapAttendanceToCalculationInput(attendance: StudentAttendanceRow | null
 
 function getLatestTimestamp(
   values: Array<Date | string | number | null | undefined>,
-) {
-  return values.reduce((max, value) => {
-    if (!value) return max;
+): number {
+  return values.reduce<number>((max, value) => {
+    if (value == null) return max;
 
-    const time =
-      value instanceof Date
-        ? value.getTime()
-        : typeof value === "number"
-          ? value
-          : new Date(value).getTime();
+    if (value instanceof Date) {
+      const time = value.getTime();
+      return Number.isFinite(time) ? Math.max(max, time) : max;
+    }
 
-    if (!Number.isFinite(time)) return max;
-    return Math.max(max, time);
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? Math.max(max, value) : max;
+    }
+
+    if (typeof value === "string") {
+      const time = new Date(value).getTime();
+      return Number.isFinite(time) ? Math.max(max, time) : max;
+    }
+
+    return max;
   }, 0);
 }
 
 function isRulePayloadObject(
   value: Prisma.JsonValue | null,
-): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+): value is Prisma.JsonObject {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 async function getOptionalCurrentUser() {
@@ -417,7 +427,7 @@ export async function GET(
       );
     }
 
-    const row = await prisma.admissionResult.findFirst({
+    const row = await db.admissionResult.findFirst({
       where: { id, isActive: true },
       select: {
         id: true,
@@ -491,7 +501,7 @@ export async function GET(
     if (user?.id) {
       const now = new Date();
 
-      const entitlement = await prisma.userEntitlement.findFirst({
+      const entitlement = await db.userEntitlement.findFirst({
         where: {
           userId: user.id,
           featureCode: EntitlementFeatureCode.ANALYSIS_30D,
@@ -510,7 +520,7 @@ export async function GET(
       if (entitlement) {
         const [cachedAnalysis, savedItem, lockedSubmission, attendance, ruleCandidates] =
           await Promise.all([
-            prisma.studentAdmissionAnalysisResult.findUnique({
+            db.studentAdmissionAnalysisResult.findUnique({
               where: {
                 userId_admissionResultId: {
                   userId: user.id,
@@ -524,7 +534,7 @@ export async function GET(
                 calculationMemo: true,
               },
             }),
-            prisma.studentSavedRecruitmentUnit.findUnique({
+            db.studentSavedRecruitmentUnit.findUnique({
               where: {
                 userId_admissionResultId: {
                   userId: user.id,
@@ -535,7 +545,7 @@ export async function GET(
                 id: true,
               },
             }),
-            prisma.studentRecordSubmission.findFirst({
+            db.studentRecordSubmission.findFirst({
               where: {
                 userId: user.id,
                 isLocked: true,
@@ -575,7 +585,7 @@ export async function GET(
                 },
               },
             }),
-            prisma.studentRecordAttendance.findUnique({
+            db.studentRecordAttendance.findUnique({
               where: {
                 userId: user.id,
               },
@@ -588,7 +598,7 @@ export async function GET(
                 updatedAt: true,
               },
             }),
-            prisma.universityConversionRule.findMany({
+            db.universityConversionRule.findMany({
               where: {
                 status: UniversityConversionRuleStatus.ACTIVE,
                 isActive: true,
@@ -626,10 +636,12 @@ export async function GET(
 
         const matchedRule =
           ruleCandidates
-            .filter((rule) => matchesRuleToTarget(rule, targetScope))
-            .sort(compareRulesBySpecificity)[0] ?? null;
+            .filter((rule: RuleCandidate) => matchesRuleToTarget(rule, targetScope))
+            .sort((a: RuleCandidate, b: RuleCandidate) =>
+              compareRulesBySpecificity(a, b),
+            )[0] ?? null;
 
-        const latestSourceUpdatedAt = getLatestTimestamp([
+        const latestSourceUpdatedAt: number = getLatestTimestamp([
           row.updatedAt,
           lockedSubmission?.updatedAt,
           lockedSubmission?.finalizedAt,
@@ -656,7 +668,7 @@ export async function GET(
             nextMemo = "INVALID_RULE_PAYLOAD";
           } else {
             const summary = calculateUniversityConversionSummaryFromTestSet({
-              payload: matchedRule.rawPayload,
+              payload: matchedRule.rawPayload as CalculateUniversityConversionPayload,
               scoreRows: lockedSubmission.grades.map(mapStudentGradeToCalculationRow),
               attendance: mapAttendanceToCalculationInput(attendance),
             });
@@ -665,7 +677,7 @@ export async function GET(
             nextMemo = `RULE:${matchedRule.id}`;
           }
 
-          effectiveAnalysis = await prisma.studentAdmissionAnalysisResult.upsert({
+          effectiveAnalysis = await db.studentAdmissionAnalysisResult.upsert({
             where: {
               userId_admissionResultId: {
                 userId: user.id,
