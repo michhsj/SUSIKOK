@@ -1,16 +1,30 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 declare global {
   // eslint-disable-next-line no-var
-  var __db__: PrismaClient | undefined;
+  var __prisma__: PrismaClient | undefined;
 }
 
-export const db =
-  global.__db__ ??
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set.");
+}
+
+const adapter = new PrismaPg({ connectionString });
+
+const prismaClient =
+  global.__prisma__ ??
   new PrismaClient({
+    adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
 if (process.env.NODE_ENV !== "production") {
-  global.__db__ = db;
+  global.__prisma__ = prismaClient;
 }
+
+export const db = prismaClient;
+export const prisma = prismaClient;
+export default prismaClient;
