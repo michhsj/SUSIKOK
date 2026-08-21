@@ -16,6 +16,7 @@ type RuleListItem = {
   recruitmentUnit?: string;
   status: RuleStatus;
   updatedAt: string;
+  calculatedFinalScore: number | null;
 };
 
 type ActiveRuleApiRow = {
@@ -51,6 +52,11 @@ type ActiveRulesApiResponse = {
     total: number;
     rows: ActiveRuleApiRow[];
   };
+};
+
+type DeleteRuleApiResponse = {
+  success: boolean;
+  message?: string;
 };
 
 function buildEditHref(rule: RuleListItem) {
@@ -91,6 +97,14 @@ function formatDateTime(value: string) {
   }).format(date);
 }
 
+function formatTestScore(value: number | null) {
+  if (value == null || Number.isNaN(value)) {
+    return "-";
+  }
+
+  return value.toFixed(2);
+}
+
 function mapApiRowToRuleListItem(row: ActiveRuleApiRow): RuleListItem {
   return {
     id: row.ruleId,
@@ -103,6 +117,7 @@ function mapApiRowToRuleListItem(row: ActiveRuleApiRow): RuleListItem {
     recruitmentUnit: row.recruitmentUnit || undefined,
     status: row.status,
     updatedAt: formatDateTime(row.updatedAt),
+    calculatedFinalScore: row.calculatedFinalScore,
   };
 }
 
@@ -195,6 +210,7 @@ export default function ActiveRulesPage() {
   const [rules, setRules] = useState<RuleListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -264,6 +280,41 @@ export default function ActiveRulesPage() {
 
   const activeCount = rules.filter((row) => row.status === "active").length;
   const inactiveCount = rules.filter((row) => row.status === "inactive").length;
+
+  async function handleDeleteRule(rule: RuleListItem) {
+    const confirmed = window.confirm(
+      `[${rule.university}] ${rule.admissionName || rule.admissionType} 규칙을 삭제할까요?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingRuleId(rule.id);
+
+    try {
+      const response = await fetch(
+        `/api/admin/university-conversion?ruleId=${encodeURIComponent(rule.id)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const json = (await response.json()) as DeleteRuleApiResponse;
+
+      if (!response.ok || !json.success) {
+        throw new Error(json.message || "규칙 삭제에 실패했습니다.");
+      }
+
+      setRules((prev) => prev.filter((item) => item.id !== rule.id));
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "규칙 삭제에 실패했습니다."
+      );
+    } finally {
+      setDeletingRuleId(null);
+    }
+  }
 
   return (
     <PageShell>
@@ -346,11 +397,11 @@ export default function ActiveRulesPage() {
 
       <SectionCard
         title="활성 규칙 목록"
-        description="수정 버튼을 누르면 해당 규칙의 대상 정보를 환산규칙 작성 페이지로 전달합니다."
+        description="수정 버튼을 누르면 해당 규칙의 대상 정보를 환산규칙 작성 페이지로 전달합니다. 테스트 성적은 각 규칙 저장 시 계산된 최종 환산점수입니다."
       >
         <div className="overflow-x-auto">
-          <div className="min-w-[1120px]">
-            <div className="grid grid-cols-[100px_120px_180px_160px_200px_120px_110px_140px] gap-3 rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+          <div className="min-w-[1420px]">
+            <div className="grid grid-cols-[100px_120px_180px_160px_200px_120px_110px_140px_140px_120px] gap-3 rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
               <div>수정</div>
               <div>지역</div>
               <div>대학명</div>
@@ -359,6 +410,8 @@ export default function ActiveRulesPage() {
               <div>계열</div>
               <div>상태</div>
               <div>수정일</div>
+              <div>테스트 성적</div>
+              <div>규칙 삭제</div>
             </div>
 
             {loading ? (
@@ -388,7 +441,7 @@ export default function ActiveRulesPage() {
                 {filteredRules.map((row) => (
                   <div
                     key={row.id}
-                    className="grid grid-cols-[100px_120px_180px_160px_200px_120px_110px_140px] gap-3 rounded-[20px] border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700"
+                    className="grid grid-cols-[100px_120px_180px_160px_200px_120px_110px_140px_140px_120px] gap-3 rounded-[20px] border border-slate-200 bg-white px-4 py-4 text-sm text-slate-700"
                   >
                     <div>
                       <Link
@@ -425,6 +478,19 @@ export default function ActiveRulesPage() {
                       </ActionChip>
                     </div>
                     <div>{row.updatedAt}</div>
+                    <div className="font-semibold text-slate-900">
+                      {formatTestScore(row.calculatedFinalScore)}
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRule(row)}
+                        disabled={deletingRuleId === row.id}
+                        className="inline-flex h-9 items-center justify-center rounded-full border border-rose-300 bg-white px-4 text-xs font-semibold text-rose-700 transition hover:border-rose-400 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {deletingRuleId === row.id ? "삭제 중..." : "규칙 삭제"}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

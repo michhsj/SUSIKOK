@@ -1466,7 +1466,7 @@ export default function UniversityConversionTestScorePage() {
                 출결 정보
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                필요할 때만 포함해서 저장할 수 있습니다.
+                미인정만 입력하세요.
               </p>
             </div>
 
@@ -1490,7 +1490,7 @@ export default function UniversityConversionTestScorePage() {
           <div className="grid gap-3 px-4 py-4 md:px-5 md:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700">
-                결석일수
+                결석
               </label>
               <input
                 value={attendance.absenceDays}

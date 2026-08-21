@@ -1,14 +1,14 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+const globalForPrisma = globalThis as {
+  prisma?: PrismaClient;
 };
 
-const connectionString = process.env.DATABASE_URL || process.env.DIRECT_URL;
+const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL 또는 DIRECT_URL이 설정되어 있어야 합니다.");
+  throw new Error("DATABASE_URL이 설정되어 있어야 합니다.");
 }
 
 const adapter = new PrismaPg({

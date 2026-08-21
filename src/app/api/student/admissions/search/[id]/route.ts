@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { EntitlementFeatureCode, EntitlementStatus } from "@prisma/client";
+import {
+  EntitlementFeatureCode,
+  EntitlementStatus,
+  Prisma,
+  UniversityConversionRuleStatus,
+} from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { getSupportLevelLabel } from "@/lib/student/support-level";
+import { calculateUniversityConversionSummaryFromTestSet } from "@/lib/university-conversion/calculate-rule-summary";
 
 type SummaryField = { label: string; value: string };
 
@@ -71,9 +77,71 @@ type DetailItem = {
   };
 };
 
+type RuleTargetScope = {
+  region: string;
+  university: string;
+  admissionType: string;
+  admissionName: string;
+  track: string;
+  collegeName: string;
+  recruitmentUnit: string;
+};
+
+type RuleCandidate = {
+  id: string;
+  version: number;
+  updatedAt: Date;
+  region: string;
+  university: string;
+  admissionType: string;
+  admissionName: string;
+  track: string;
+  collegeName: string;
+  recruitmentUnit: string;
+  rawPayload: Prisma.JsonValue | null;
+};
+
+type StudentGradeRow = {
+  academicTermLabel: string;
+  subjectGroupSnapshot: string;
+  completionTypeSnapshot: string | null;
+  subjectName: string;
+  credits: number | null;
+  rawScore: number | null;
+  averageScore: number | null;
+  standardDeviation: number | null;
+  achievement: string | null;
+  grade: number | null;
+  enrolledStudentCount: number | null;
+  achievementARatio: number | null;
+  achievementBRatio: number | null;
+  achievementCRatio: number | null;
+};
+
+type StudentAttendanceRow = {
+  includeAttendance: boolean;
+  absence: number | null;
+  lateness: number | null;
+  earlyLeave: number | null;
+  outing: number | null;
+  updatedAt: Date;
+};
+
+const RULE_SPECIFICITY_PRIORITY_KEYS = [
+  "recruitmentUnit",
+  "collegeName",
+  "admissionName",
+  "track",
+] as const;
+
 function toStringValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   return String(value).trim();
+}
+
+function toNullableString(value: unknown): string | null {
+  const text = toStringValue(value);
+  return text ? text : null;
 }
 
 function toDisplayText(value: unknown): string {
@@ -90,6 +158,19 @@ function toNumber(value: string | number | null | undefined): number | null {
   );
 
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value.trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
 }
 
 function toFixedScore(value: number | null | undefined): string {
@@ -206,6 +287,113 @@ function buildCharts(
   };
 }
 
+function hasText(value: unknown) {
+  return toStringValue(value).length > 0;
+}
+
+function matchesRuleToTarget(rule: RuleCandidate, target: RuleTargetScope) {
+  if (rule.region !== target.region) return false;
+  if (rule.university !== target.university) return false;
+  if (rule.admissionType !== target.admissionType) return false;
+
+  const optionalKeys: Array<keyof Pick<
+    RuleTargetScope,
+    "admissionName" | "track" | "collegeName" | "recruitmentUnit"
+  >> = ["admissionName", "track", "collegeName", "recruitmentUnit"];
+
+  for (const key of optionalKeys) {
+    const ruleValue = toStringValue(rule[key]);
+    const targetValue = toStringValue(target[key]);
+
+    if (ruleValue && ruleValue !== targetValue) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getRuleSpecificityTuple(rule: RuleCandidate) {
+  return RULE_SPECIFICITY_PRIORITY_KEYS.map((key) =>
+    hasText(rule[key]) ? 1 : 0,
+  );
+}
+
+function compareRulesBySpecificity(a: RuleCandidate, b: RuleCandidate) {
+  const tupleA = getRuleSpecificityTuple(a);
+  const tupleB = getRuleSpecificityTuple(b);
+
+  for (let i = 0; i < tupleA.length; i += 1) {
+    if (tupleA[i] !== tupleB[i]) {
+      return tupleB[i] - tupleA[i];
+    }
+  }
+
+  const updatedAtDiff = b.updatedAt.getTime() - a.updatedAt.getTime();
+  if (updatedAtDiff !== 0) return updatedAtDiff;
+
+  return b.version - a.version;
+}
+
+function mapStudentGradeToCalculationRow(grade: StudentGradeRow) {
+  return {
+    academicTerm: grade.academicTermLabel,
+    subjectGroup: grade.subjectGroupSnapshot,
+    completionType: grade.completionTypeSnapshot ?? "",
+    subjectName: grade.subjectName,
+    credits: grade.credits != null ? String(grade.credits) : "",
+    rawScore: grade.rawScore != null ? String(grade.rawScore) : "",
+    averageScore: grade.averageScore != null ? String(grade.averageScore) : "",
+    standardDeviation:
+      grade.standardDeviation != null ? String(grade.standardDeviation) : "",
+    achievement: grade.achievement ?? "",
+    grade: grade.grade != null ? String(grade.grade) : "",
+    enrolledStudentCount:
+      grade.enrolledStudentCount != null ? String(grade.enrolledStudentCount) : "",
+    achievementARatio:
+      grade.achievementARatio != null ? String(grade.achievementARatio) : "",
+    achievementBRatio:
+      grade.achievementBRatio != null ? String(grade.achievementBRatio) : "",
+    achievementCRatio:
+      grade.achievementCRatio != null ? String(grade.achievementCRatio) : "",
+  };
+}
+
+function mapAttendanceToCalculationInput(attendance: StudentAttendanceRow | null) {
+  if (!attendance) return null;
+
+  return {
+    absenceDays: attendance.absence != null ? String(attendance.absence) : "",
+    lateness: attendance.lateness != null ? String(attendance.lateness) : "",
+    earlyLeave: attendance.earlyLeave != null ? String(attendance.earlyLeave) : "",
+    outing: attendance.outing != null ? String(attendance.outing) : "",
+  };
+}
+
+function getLatestTimestamp(
+  values: Array<Date | string | number | null | undefined>,
+) {
+  return values.reduce((max, value) => {
+    if (!value) return max;
+
+    const time =
+      value instanceof Date
+        ? value.getTime()
+        : typeof value === "number"
+          ? value
+          : new Date(value).getTime();
+
+    if (!Number.isFinite(time)) return max;
+    return Math.max(max, time);
+  }, 0);
+}
+
+function isRulePayloadObject(
+  value: Prisma.JsonValue | null,
+): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 async function getOptionalCurrentUser() {
   try {
     return await getCurrentUser();
@@ -233,6 +421,7 @@ export async function GET(
       where: { id, isActive: true },
       select: {
         id: true,
+        updatedAt: true,
         region: true,
         universityName: true,
         admissionType: true,
@@ -319,38 +508,196 @@ export async function GET(
       premiumLocked = !entitlement;
 
       if (entitlement) {
-        const [analysisResult, savedItem] = await Promise.all([
-          prisma.studentAdmissionAnalysisResult.findUnique({
+        const [cachedAnalysis, savedItem, lockedSubmission, attendance, ruleCandidates] =
+          await Promise.all([
+            prisma.studentAdmissionAnalysisResult.findUnique({
+              where: {
+                userId_admissionResultId: {
+                  userId: user.id,
+                  admissionResultId: row.id,
+                },
+              },
+              select: {
+                convertedScore: true,
+                supportLevel: true,
+                calculatedAt: true,
+                calculationMemo: true,
+              },
+            }),
+            prisma.studentSavedRecruitmentUnit.findUnique({
+              where: {
+                userId_admissionResultId: {
+                  userId: user.id,
+                  admissionResultId: row.id,
+                },
+              },
+              select: {
+                id: true,
+              },
+            }),
+            prisma.studentRecordSubmission.findFirst({
+              where: {
+                userId: user.id,
+                isLocked: true,
+              },
+              orderBy: [
+                { finalizedAt: "desc" },
+                { updatedAt: "desc" },
+                { createdAt: "desc" },
+              ],
+              select: {
+                id: true,
+                updatedAt: true,
+                finalizedAt: true,
+                inputMethod: true,
+                grades: {
+                  orderBy: [
+                    { schoolYear: "asc" },
+                    { semester: "asc" },
+                    { subjectName: "asc" },
+                  ],
+                  select: {
+                    academicTermLabel: true,
+                    subjectGroupSnapshot: true,
+                    completionTypeSnapshot: true,
+                    subjectName: true,
+                    credits: true,
+                    rawScore: true,
+                    averageScore: true,
+                    standardDeviation: true,
+                    achievement: true,
+                    grade: true,
+                    enrolledStudentCount: true,
+                    achievementARatio: true,
+                    achievementBRatio: true,
+                    achievementCRatio: true,
+                  },
+                },
+              },
+            }),
+            prisma.studentRecordAttendance.findUnique({
+              where: {
+                userId: user.id,
+              },
+              select: {
+                includeAttendance: true,
+                absence: true,
+                lateness: true,
+                earlyLeave: true,
+                outing: true,
+                updatedAt: true,
+              },
+            }),
+            prisma.universityConversionRule.findMany({
+              where: {
+                status: UniversityConversionRuleStatus.ACTIVE,
+                isActive: true,
+                region: row.region,
+                university: row.universityName,
+                admissionType: row.admissionType,
+              },
+              select: {
+                id: true,
+                version: true,
+                updatedAt: true,
+                region: true,
+                university: true,
+                admissionType: true,
+                admissionName: true,
+                track: true,
+                collegeName: true,
+                recruitmentUnit: true,
+                rawPayload: true,
+              },
+            }),
+          ]);
+
+        saved = Boolean(savedItem);
+
+        const targetScope: RuleTargetScope = {
+          region: row.region,
+          university: row.universityName,
+          admissionType: row.admissionType,
+          admissionName: row.admissionName,
+          track: row.track,
+          collegeName: row.collegeName,
+          recruitmentUnit: row.recruitmentUnit,
+        };
+
+        const matchedRule =
+          ruleCandidates
+            .filter((rule) => matchesRuleToTarget(rule, targetScope))
+            .sort(compareRulesBySpecificity)[0] ?? null;
+
+        const latestSourceUpdatedAt = getLatestTimestamp([
+          row.updatedAt,
+          lockedSubmission?.updatedAt,
+          lockedSubmission?.finalizedAt,
+          attendance?.updatedAt,
+          matchedRule?.updatedAt,
+        ]);
+
+        const cacheFresh = Boolean(
+          cachedAnalysis?.calculatedAt &&
+            cachedAnalysis.calculatedAt.getTime() >= latestSourceUpdatedAt,
+        );
+
+        let effectiveAnalysis = cachedAnalysis;
+
+        if (!cacheFresh) {
+          let nextConvertedScore: number | null = null;
+          let nextMemo = "";
+
+          if (!lockedSubmission || lockedSubmission.grades.length === 0) {
+            nextMemo = "NO_LOCKED_STUDENT_RECORD";
+          } else if (!matchedRule) {
+            nextMemo = "NO_ACTIVE_UNIVERSITY_CONVERSION_RULE";
+          } else if (!isRulePayloadObject(matchedRule.rawPayload)) {
+            nextMemo = "INVALID_RULE_PAYLOAD";
+          } else {
+            const summary = calculateUniversityConversionSummaryFromTestSet({
+              payload: matchedRule.rawPayload,
+              scoreRows: lockedSubmission.grades.map(mapStudentGradeToCalculationRow),
+              attendance: mapAttendanceToCalculationInput(attendance),
+            });
+
+            nextConvertedScore = toFiniteNumber(summary?.finalScore);
+            nextMemo = `RULE:${matchedRule.id}`;
+          }
+
+          effectiveAnalysis = await prisma.studentAdmissionAnalysisResult.upsert({
             where: {
               userId_admissionResultId: {
                 userId: user.id,
                 admissionResultId: row.id,
               },
+            },
+            update: {
+              convertedScore: nextConvertedScore,
+              calculatedAt: new Date(),
+              calculationMemo: nextMemo,
+            },
+            create: {
+              userId: user.id,
+              admissionResultId: row.id,
+              convertedScore: nextConvertedScore,
+              supportLevel: null,
+              calculatedAt: new Date(),
+              calculationMemo: nextMemo,
             },
             select: {
               convertedScore: true,
               supportLevel: true,
               calculatedAt: true,
+              calculationMemo: true,
             },
-          }),
-          prisma.studentSavedRecruitmentUnit.findUnique({
-            where: {
-              userId_admissionResultId: {
-                userId: user.id,
-                admissionResultId: row.id,
-              },
-            },
-            select: {
-              id: true,
-            },
-          }),
-        ]);
+          });
+        }
 
-        convertedScoreDisplay = toFixedScore(analysisResult?.convertedScore);
-        supportLevelDisplay = analysisResult?.supportLevel
-          ? getSupportLevelLabel(analysisResult.supportLevel)
+        convertedScoreDisplay = toFixedScore(effectiveAnalysis?.convertedScore);
+        supportLevelDisplay = effectiveAnalysis?.supportLevel
+          ? getSupportLevelLabel(effectiveAnalysis.supportLevel)
           : "-";
-        saved = Boolean(savedItem);
       }
     }
 

@@ -119,6 +119,25 @@ export default async function StudentPaymentPage() {
                   </span>
                 </div>
 
+                <div className="mt-4 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-white to-blue-50 px-4 py-4 shadow-sm">
+                  <p className="text-xs font-bold tracking-[0.16em] text-blue-700">
+                    결제 금액
+                  </p>
+                  <div className="mt-2 flex items-end justify-between gap-3">
+                    <div className="flex items-end gap-2">
+                      <span className="text-3xl font-black leading-none tracking-[-0.04em] text-blue-950">
+                        33,000
+                      </span>
+                      <span className="pb-1 text-base font-bold text-blue-900">
+                        원
+                      </span>
+                    </div>
+                    <span className="rounded-full bg-blue-900 px-3 py-1 text-xs font-bold text-white">
+                      30일 이용권
+                    </span>
+                  </div>
+                </div>
+
                 <div className="mt-5 space-y-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <span className="text-sm font-semibold text-blue-900">서비스 기간</span>
