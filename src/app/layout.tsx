@@ -22,7 +22,7 @@ const siteConfig = {
   name: "수시KOK",
   nameEn: "SusiKOK",
   tagline: "Admissions Strategy",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.susikok.kr",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.unikok.com",
   title: "수시KOK | 학생부 기반 대학별 환산점수 분석 서비스",
   shortTitle: "수시KOK",
   description:
@@ -56,11 +56,14 @@ const siteConfig = {
   themeColorDark: "#020617",
 };
 
+const siteUrl = new URL(siteConfig.url);
+const absoluteOgImageUrl = new URL(siteConfig.ogImage, siteConfig.url).toString();
+
 // -----------------------------------------------
 // Metadata
 // -----------------------------------------------
 export const metadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
+  metadataBase: siteUrl,
 
   title: {
     default: siteConfig.title,
@@ -84,9 +87,9 @@ export const metadata: Metadata = {
   category: "education",
 
   alternates: {
-    canonical: "/",
+    canonical: siteConfig.url,
     languages: {
-      "ko-KR": "/",
+      "ko-KR": siteConfig.url,
     },
   },
 
@@ -105,7 +108,7 @@ export const metadata: Metadata = {
     description: siteConfig.description,
     images: [
       {
-        url: siteConfig.ogImage,
+        url: absoluteOgImageUrl,
         width: siteConfig.ogImageWidth,
         height: siteConfig.ogImageHeight,
         alt: siteConfig.ogImageAlt,
@@ -118,12 +121,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteConfig.title,
     description: siteConfig.description,
-    images: [
-      {
-        url: siteConfig.ogImage,
-        alt: siteConfig.ogImageAlt,
-      },
-    ],
+    images: [absoluteOgImageUrl],
   },
 
   robots: {
