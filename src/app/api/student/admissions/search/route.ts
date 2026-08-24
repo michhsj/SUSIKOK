@@ -1368,13 +1368,6 @@ export async function GET(request: NextRequest) {
                 supportLevel: true,
                 calculationMemo: true,
                 calculatedAt: true,
-                comprehensiveTotalScore: true,
-                academicWeightedScore: true,
-                careerWeightedScore: true,
-                communityWeightedScore: true,
-                academicCompetencyScore: true,
-                careerCompetencyScore: true,
-                communityCompetencyScore: true,
               },
             })
             .catch((error) => {
@@ -1647,29 +1640,15 @@ export async function GET(request: NextRequest) {
         try {
           let analysis = analysisMap.get(row.id) ?? null;
 
-          const storedComprehensiveTotalScore = normalizeNullableScore(
-            analysis?.comprehensiveTotalScore
-          );
+          const storedComprehensiveTotalScore = null;
 
-          const storedAcademicWeightedScore = normalizeNullableScore(
-            analysis?.academicWeightedScore
-          );
-          const storedCareerWeightedScore = normalizeNullableScore(
-            analysis?.careerWeightedScore
-          );
-          const storedCommunityWeightedScore = normalizeNullableScore(
-            analysis?.communityWeightedScore
-          );
+          const storedAcademicWeightedScore = null;
+          const storedCareerWeightedScore = null;
+          const storedCommunityWeightedScore = null;
 
-          const storedAcademicCompetencyScore = normalizeNullableScore(
-            analysis?.academicCompetencyScore
-          );
-          const storedCareerCompetencyScore = normalizeNullableScore(
-            analysis?.careerCompetencyScore
-          );
-          const storedCommunityCompetencyScore = normalizeNullableScore(
-            analysis?.communityCompetencyScore
-          );
+          const storedAcademicCompetencyScore = null;
+          const storedCareerCompetencyScore = null;
+          const storedCommunityCompetencyScore = null;
 
           let runtimeComprehensiveTotalScore: number | null = null;
 
@@ -1806,13 +1785,6 @@ export async function GET(request: NextRequest) {
                 supportLevel: true,
                 calculationMemo: true,
                 calculatedAt: true,
-                comprehensiveTotalScore: true,
-                academicWeightedScore: true,
-                careerWeightedScore: true,
-                communityWeightedScore: true,
-                academicCompetencyScore: true,
-                careerCompetencyScore: true,
-                communityCompetencyScore: true,
               },
             });
           }
@@ -1858,31 +1830,17 @@ export async function GET(request: NextRequest) {
 
           const fallbackAnalysis = analysisMap.get(row.id) ?? null;
           const fallbackConvertedScore = normalizeNullableScore(
-            fallbackAnalysis?.comprehensiveTotalScore ?? fallbackAnalysis?.convertedScore
+            fallbackAnalysis?.convertedScore
           );
           const fallbackConvertedScoreDisplay =
             fallbackConvertedScore != null ? fallbackConvertedScore.toFixed(2) : "-";
-          const fallbackStoredAcademicWeightedScore = normalizeNullableScore(
-            fallbackAnalysis?.academicWeightedScore
-          );
-          const fallbackStoredCareerWeightedScore = normalizeNullableScore(
-            fallbackAnalysis?.careerWeightedScore
-          );
-          const fallbackStoredCommunityWeightedScore = normalizeNullableScore(
-            fallbackAnalysis?.communityWeightedScore
-          );
-          const fallbackStoredAcademicCompetencyScore = normalizeNullableScore(
-            fallbackAnalysis?.academicCompetencyScore
-          );
-          const fallbackStoredCareerCompetencyScore = normalizeNullableScore(
-            fallbackAnalysis?.careerCompetencyScore
-          );
-          const fallbackStoredCommunityCompetencyScore = normalizeNullableScore(
-            fallbackAnalysis?.communityCompetencyScore
-          );
-          const fallbackStoredComprehensiveTotalScore = normalizeNullableScore(
-            fallbackAnalysis?.comprehensiveTotalScore
-          );
+          const fallbackStoredAcademicWeightedScore = null;
+          const fallbackStoredCareerWeightedScore = null;
+          const fallbackStoredCommunityWeightedScore = null;
+          const fallbackStoredAcademicCompetencyScore = null;
+          const fallbackStoredCareerCompetencyScore = null;
+          const fallbackStoredCommunityCompetencyScore = null;
+          const fallbackStoredComprehensiveTotalScore = null;
 
           return normalizeSearchItem(row, {
             premiumLocked: false,

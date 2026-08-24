@@ -1675,32 +1675,20 @@ export async function GET(
 
           try {
             const [cachedAnalysis, savedItem] = await Promise.all([
-              db.studentAdmissionAnalysisResult.findUnique({
-                where: {
-                  userId_admissionResultId: {
-                    userId: currentUser.id,
-                    admissionResultId: row.id,
-                  },
-                },
-                select: {
-                  convertedScore: true,
-                  supportLevel: true,
-                  calculatedAt: true,
-                  calculationMemo: true,
-                  hakjongSubmissionId: true,
-                  comprehensiveRatioId: true,
-                  academicCompetencyScore: true,
-                  careerCompetencyScore: true,
-                  communityCompetencyScore: true,
-                  academicCompetencyRatio: true,
-                  careerCompetencyRatio: true,
-                  communityCompetencyRatio: true,
-                  academicWeightedScore: true,
-                  careerWeightedScore: true,
-                  communityWeightedScore: true,
-                  comprehensiveTotalScore: true,
-                },
-              }),
+db.studentAdmissionAnalysisResult.findUnique({
+  where: {
+    userId_admissionResultId: {
+      userId: currentUser.id,
+      admissionResultId: row.id,
+    },
+  },
+  select: {
+    convertedScore: true,
+    supportLevel: true,
+    calculatedAt: true,
+    calculationMemo: true,
+  },
+}),
               db.studentSavedRecruitmentUnit.findUnique({
                 where: {
                   userId_admissionResultId: {
