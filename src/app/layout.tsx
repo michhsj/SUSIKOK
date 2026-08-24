@@ -48,7 +48,7 @@ const siteConfig = {
   email: "michhsj@susikok.kr",
   phone: "02-1234-5678",
   businessHours: "평일 09:00 - 18:00",
-  ogImage: "/images/og/susikok-main-og.jpg?v=20260824-1",
+  ogImage: "/images/og/susikok-main-og-v2.jpg",
   ogImageWidth: 1200,
   ogImageHeight: 630,
   ogImageAlt: "수시KOK - 학생부 기반 대학별 환산점수 분석 서비스",
