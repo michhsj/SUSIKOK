@@ -48,7 +48,7 @@ const siteConfig = {
   email: "michhsj@susikok.kr",
   phone: "02-1234-5678",
   businessHours: "평일 09:00 - 18:00",
-  ogImage: "/images/og/susikok-main-og.jpg",
+  ogImage: "/images/og/susikok-main-og.jpg?v=20260824-1",
   ogImageWidth: 1200,
   ogImageHeight: 630,
   ogImageAlt: "수시KOK - 학생부 기반 대학별 환산점수 분석 서비스",
@@ -314,7 +314,6 @@ export default function RootLayout({
           selection:text-blue-900
         `}
       >
-        {/* JSON-LD 구조화 데이터 */}
         <script
           id="jsonld-organization"
           type="application/ld+json"
@@ -337,7 +336,6 @@ export default function RootLayout({
           }}
         />
 
-        {/* Google Analytics */}
         {gaId && (
           <>
             <Script
@@ -363,7 +361,6 @@ export default function RootLayout({
           </>
         )}
 
-        {/* 접근성 : 본문 바로가기 */}
         <a
           href="#main-content"
           className="
@@ -386,7 +383,6 @@ export default function RootLayout({
           본문 바로가기
         </a>
 
-        {/* 전역 래퍼 */}
         <div id="root-wrapper" className="relative isolate min-h-screen">
           <main id="main-content" className="min-h-screen">
             {children}
