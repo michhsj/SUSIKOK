@@ -662,11 +662,12 @@ function buildPageHref(input: {
 export default async function AdminStudentsPage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
   noStore();
 
-  const data = await getStudentsPageData(searchParams);
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const data = await getStudentsPageData(resolvedSearchParams);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.10),_transparent_35%),linear-gradient(to_bottom,_#f8fafc,_#eef2f7)]">

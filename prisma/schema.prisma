@@ -23,34 +23,37 @@ model School {
 }
 
 model User {
-  id                       String                           @id @default(cuid())
-  email                    String                           @unique
-  passwordHash             String
-  name                     String
-  phone                    String?
-  role                     UserRole                         @default(STUDENT)
-  schoolId                 String?
-  gradeLevel               Int?
-  termsConsent             Boolean                          @default(false)
-  privacyConsent           Boolean                          @default(false)
-  marketingConsent         Boolean                          @default(false)
-  isActive                 Boolean                          @default(true)
-  lastLoginAt              DateTime?
-  createdAt                DateTime                         @default(now())
-  updatedAt                DateTime                         @updatedAt
-  conversionRuleTestSets   ConversionRuleTestSet[]
-  hakjongFitSubmissions    HakjongFitSubmission[]
-  paymentOrders            PaymentOrder[]
-  paymentTransactions      PaymentTransaction[]
-  admissionAnalysisResults StudentAdmissionAnalysisResult[]
-  mockExamRecords          StudentMockExamRecord[]
-  mockExamSubmissions      StudentMockExamSubmission[]
-  studentRecordAttendance  StudentRecordAttendance?
-  studentRecordGrades      StudentRecordGrade[]
-  studentRecordSubmissions StudentRecordSubmission[]
-  savedRecruitmentUnits    StudentSavedRecruitmentUnit[]
-  school                   School?                          @relation(fields: [schoolId], references: [id])
-  entitlements             UserEntitlement[]
+  id                             String                           @id @default(cuid())
+  email                          String                           @unique
+  passwordHash                   String
+  name                           String
+  phone                          String?
+  role                           UserRole                         @default(STUDENT)
+  schoolId                       String?
+  gradeLevel                     Int?
+  termsConsent                   Boolean                          @default(false)
+  privacyConsent                 Boolean                          @default(false)
+  marketingConsent               Boolean                          @default(false)
+  isActive                       Boolean                          @default(true)
+  lastLoginAt                    DateTime?
+  createdAt                      DateTime                         @default(now())
+  updatedAt                      DateTime                         @updatedAt
+  conversionRuleTestSets         ConversionRuleTestSet[]
+  hakjongFitSubmissions          HakjongFitSubmission[]
+  paymentOrders                  PaymentOrder[]
+  paymentTransactions            PaymentTransaction[]
+  admissionAnalysisResults       StudentAdmissionAnalysisResult[]
+  mockExamRecords                StudentMockExamRecord[]
+  mockExamSubmissions            StudentMockExamSubmission[]
+  studentRecordAttendance        StudentRecordAttendance?
+  studentRecordGrades            StudentRecordGrade[]
+  studentRecordSubmissions       StudentRecordSubmission[]
+  studentRecordAnalyses          StudentRecordAnalysis[]
+  studentRecordAnalysisSemesters StudentRecordAnalysisSemester[]
+  studentRecordAnalysisSubjects  StudentRecordAnalysisSubject[]
+  savedRecruitmentUnits          StudentSavedRecruitmentUnit[]
+  school                         School?                          @relation(fields: [schoolId], references: [id])
+  entitlements                   UserEntitlement[]
 
   @@index([schoolId])
   @@index([role])
@@ -124,6 +127,7 @@ model StudentRecordSubmission {
   createdAt   DateTime                 @default(now())
   updatedAt   DateTime                 @updatedAt
   grades      StudentRecordGrade[]
+  analyses    StudentRecordAnalysis[]
   user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -477,18 +481,76 @@ model AdmissionResult {
   @@index([isActive])
 }
 
+model UniversityComprehensiveRatio {
+  id              String @id @default(cuid())
+  admissionYear   Int    @default(2027)
+  sourceSheetName String @default("대학별 종합전형 비율")
+
+  region          String
+  universityName  String
+  admissionType   String
+  admissionName   String
+  track           String @default("")
+  collegeName     String @default("")
+  recruitmentUnit String @default("")
+
+  academicCompetencyRatio        Float
+  academicCompetencyDescription  String?
+  careerCompetencyRatio          Float
+  careerCompetencyDescription    String?
+  communityCompetencyRatio       Float
+  communityCompetencyDescription String?
+
+  rawRow   Json?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([admissionYear, region, universityName, admissionType, admissionName, track, collegeName, recruitmentUnit], name: "universityComprehensiveRatioNaturalKey")
+  @@index([admissionYear])
+  @@index([region])
+  @@index([universityName])
+  @@index([admissionType])
+  @@index([admissionName])
+  @@index([track])
+  @@index([collegeName])
+  @@index([recruitmentUnit])
+  @@index([isActive])
+}
+
 model StudentSavedRecruitmentUnit {
-  id                String          @id @default(cuid())
-  userId            String
-  admissionResultId String
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  admissionResult   AdmissionResult @relation(fields: [admissionResultId], references: [id], onDelete: Cascade)
-  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                       String          @id @default(cuid())
+  userId                   String
+  admissionResultId        String
+  priority                 Int             @default(0)
+  snapshotAdmissionYear    Int?
+  snapshotRegion           String?
+  snapshotUniversityName   String?
+  snapshotAdmissionType    String?
+  snapshotAdmissionName    String?
+  snapshotTrack            String?
+  snapshotCollegeName      String?
+  snapshotRecruitmentUnit  String?
+  snapshotIdentity         Json?
+  snapshotRecruitmentCount Json?
+  snapshotSummaryFields    Json?
+  snapshotYearTable        Json?
+  snapshotCharts           Json?
+  snapshotPremium          Json?
+  snapshotVersion          Int             @default(1)
+  snapshotSourceUpdatedAt  DateTime?
+  snapshotSavedFromDetail  Boolean         @default(true)
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+  admissionResult          AdmissionResult @relation(fields: [admissionResultId], references: [id], onDelete: Cascade)
+  user                     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, admissionResultId])
   @@index([userId])
   @@index([admissionResultId])
+  @@index([userId, priority])
+  @@index([userId, createdAt])
 }
 
 model StudentAdmissionAnalysisResult {
@@ -694,6 +756,101 @@ model UniversityConversionRuleAttendanceRow {
   rule      UniversityConversionRule                @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 
   @@index([ruleId, sortOrder])
+}
+
+model HomePopup {
+  id               String   @id @default(cuid())
+  title            String   @default("메인 팝업")
+  enabled          Boolean  @default(false)
+  imageUrl         String?
+  width            Int      @default(420)
+  height           Int      @default(560)
+  positionX        Int      @default(24)
+  positionY        Int      @default(24)
+  todayHideEnabled Boolean  @default(true)
+  sortOrder        Int      @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([sortOrder])
+  @@index([updatedAt])
+}
+
+model StudentRecordAnalysis {
+  id                                  String                          @id @default(cuid())
+  userId                              String
+  submissionId                        String
+  calculationVersion                  String                          @default("v1")
+  sourceUpdatedAt                     DateTime
+  calculatedAt                        DateTime                        @default(now())
+  isLatest                            Boolean                         @default(true)
+  koreanMathEnglishSocialGrade        Float?
+  koreanMathEnglishScienceGrade       Float?
+  koreanMathEnglishSocialScienceGrade Float?
+  allSubjectsGrade                    Float?
+  totalGradeRowCount                  Int                             @default(0)
+  usableGradeRowCount                 Int                             @default(0)
+  commonGeneralRowCount               Int                             @default(0)
+  semesterCount                       Int                             @default(0)
+  calculationMemo                     String?
+  errorMessage                        String?
+  createdAt                           DateTime                        @default(now())
+  updatedAt                           DateTime                        @updatedAt
+  submission                          StudentRecordSubmission         @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user                                User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  semesters                           StudentRecordAnalysisSemester[]
+  subjects                            StudentRecordAnalysisSubject[]
+
+  @@unique([submissionId, calculationVersion])
+  @@index([userId])
+  @@index([submissionId])
+  @@index([userId, isLatest])
+  @@index([userId, calculatedAt])
+  @@index([submissionId, calculatedAt])
+}
+
+model StudentRecordAnalysisSemester {
+  id                 String                @id @default(cuid())
+  analysisId         String
+  userId             String
+  schoolYear         Int
+  semester           Int
+  academicTermLabel  String
+  displayOrder       Int
+  averageGrade       Float?
+  totalCredits       Float                 @default(0)
+  subjectCount       Int                   @default(0)
+  usableSubjectCount Int                   @default(0)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  analysis           StudentRecordAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([analysisId, schoolYear, semester])
+  @@index([analysisId])
+  @@index([userId])
+  @@index([userId, displayOrder])
+}
+
+model StudentRecordAnalysisSubject {
+  id           String                @id @default(cuid())
+  analysisId   String
+  userId       String
+  subjectGroup String
+  displayOrder Int
+  averageGrade Float?
+  totalCredits Float                 @default(0)
+  subjectCount Int                   @default(0)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  analysis     StudentRecordAnalysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([analysisId, subjectGroup])
+  @@index([analysisId])
+  @@index([userId])
+  @@index([userId, displayOrder])
 }
 
 enum UserRole {

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AdmissionDetailContent from "./admissions/detail/AdmissionDetailContent";
+import type { DetailItem } from "./admissions/detail/admission-detail-types";
 
 type AdmissionsPageClientProps = {
   premiumUnlocked?: boolean;
@@ -55,6 +57,29 @@ type SearchItem = {
     raw: string | null;
     display: string;
   };
+  premium?: {
+    locked: boolean;
+    items: {
+      label: string;
+      value: string;
+      premium?: {
+        locked: boolean;
+      };
+    }[];
+  };
+  analysisMeta?: {
+    convertedScoreRaw: number | null;
+    supportLevelRaw: string | null;
+    calculationMemo: string | null;
+    calculatedAt: string | null;
+    comprehensiveTotalScoreRaw?: number | null;
+    academicWeightedScoreRaw?: number | null;
+    careerWeightedScoreRaw?: number | null;
+    communityWeightedScoreRaw?: number | null;
+    academicCompetencyScoreRaw?: number | null;
+    careerCompetencyScoreRaw?: number | null;
+    communityCompetencyScoreRaw?: number | null;
+  };
 };
 
 type SearchResponse = {
@@ -79,76 +104,6 @@ type SaveResponse = {
   success: boolean;
   message?: string;
 };
-
-type ChartSeries = {
-  name: string;
-  data: (number | null)[];
-};
-
-type ChartBlock = {
-  title: string;
-  labels: string[];
-  series: ChartSeries[];
-};
-
-type DetailItem = {
-  id: string;
-  identity: {
-    region: string;
-    universityName: string;
-    admissionType: string;
-    admissionName: string;
-    track: string;
-    collegeName: string;
-    recruitmentUnit: string;
-  };
-  recruitmentCount2027: {
-    label: string;
-    shortLabel: string;
-    raw: string | null;
-    display: string;
-  };
-  summaryFields: {
-    label: string;
-    value: string;
-  }[];
-  yearTable: {
-    columns: string[];
-    rows: {
-      year: string;
-      recruitmentCount: string;
-      applicantCount: string;
-      competitionRate: string;
-      additionalPassCount: string;
-      minSatisfiedRate: string;
-      minSatisfiedCount: string;
-      actualCompetitionRate: string;
-      score50: string;
-      score70: string;
-      converted50: string;
-      converted70: string;
-    }[];
-  };
-  charts: {
-    competitionRate: ChartBlock;
-    scoreTrend: ChartBlock;
-  };
-  premium: {
-    locked: boolean;
-    title: string;
-    items: {
-      label: string;
-      description?: string;
-      locked: boolean;
-    }[];
-    saveAction?: {
-      label: string;
-    };
-  };
-};
-
-type SummaryField = DetailItem["summaryFields"][number];
-type YearRow = DetailItem["yearTable"]["rows"][number];
 
 type Filters = {
   region: string;
@@ -179,7 +134,7 @@ const HUMANITY_KEYWORDS = [
   "관광",
   "국제",
   "무역",
-  "무리",
+  "문학",
   "미디어",
   "사회",
   "심리",
@@ -271,7 +226,7 @@ function parseNullableNumberArray(value: unknown): (number | null)[] {
   return value.map((item) => toNullableNumber(item));
 }
 
-function orderSummaryFields(fields: SummaryField[]) {
+function orderSummaryFields(fields: DetailItem["summaryFields"]) {
   return [...fields].sort((a, b) => {
     const aIndex = SUMMARY_FIELD_ORDER.indexOf(a.label);
     const bIndex = SUMMARY_FIELD_ORDER.indexOf(b.label);
@@ -289,16 +244,68 @@ function getPremiumItem(detail: DetailItem | undefined, label: string) {
   return detail?.premium.items.find((item) => item.label === label);
 }
 
-function getScoreDisplay(detail: DetailItem | undefined, unlocked: boolean) {
-  if (!detail) return unlocked ? "-" : "유료";
-  if (detail.premium.locked) return "유료";
-  return getPremiumItem(detail, "내성적")?.description || "-";
+function getSearchPremiumItem(item: SearchItem | undefined, label: string) {
+  return item?.premium?.items.find((premiumItem) => premiumItem.label === label);
 }
 
-function getPossibilityDisplay(detail: DetailItem | undefined, unlocked: boolean) {
-  if (!detail) return unlocked ? "-" : "유료";
-  if (detail.premium.locked) return "유료";
-  return getPremiumItem(detail, "지원가능성")?.description || "-";
+function getComprehensiveChartTotal(detail?: DetailItem | null) {
+  const chart = detail?.charts?.comprehensiveCompetency;
+  if (!chart || chart.locked) return null;
+
+  const total = chart.items.reduce((sum, item) => {
+    const value =
+      typeof item.weightedPercent === "number" && Number.isFinite(item.weightedPercent)
+        ? item.weightedPercent
+        : 0;
+    return sum + value;
+  }, 0);
+
+  return Number(total.toFixed(2));
+}
+
+function getScoreDisplay(
+  item: SearchItem | undefined,
+  detail: DetailItem | undefined,
+  unlocked: boolean
+) {
+  if (detail) {
+    if (detail.premium.locked) return "유료";
+
+    const storedScoreDisplay = getPremiumItem(detail, "내성적")?.description;
+    if (storedScoreDisplay && storedScoreDisplay !== "-") {
+      return storedScoreDisplay;
+    }
+
+    const chartTotal = getComprehensiveChartTotal(detail);
+    if (chartTotal != null) return chartTotal.toFixed(2);
+
+    return "-";
+  }
+
+  if (item?.premium) {
+    if (item.premium.locked) return "유료";
+    return getSearchPremiumItem(item, "내성적")?.value || "-";
+  }
+
+  return unlocked ? "-" : "유료";
+}
+
+function getPossibilityDisplay(
+  item: SearchItem | undefined,
+  detail: DetailItem | undefined,
+  unlocked: boolean
+) {
+  if (detail) {
+    if (detail.premium.locked) return "유료";
+    return getPremiumItem(detail, "지원가능성")?.description || "-";
+  }
+
+  if (item?.premium) {
+    if (item.premium.locked) return "유료";
+    return getSearchPremiumItem(item, "지원가능성")?.value || "-";
+  }
+
+  return unlocked ? "-" : "유료";
 }
 
 function supportLevelToneClass(value: string) {
@@ -345,6 +352,26 @@ async function parseJsonResponse<T>(res: Response): Promise<T> {
   }
 }
 
+function parseSearchAnalysisMeta(value: unknown): SearchItem["analysisMeta"] | undefined {
+  if (!value || typeof value !== "object") return undefined;
+
+  const raw = value as Record<string, unknown>;
+
+  return {
+    convertedScoreRaw: toNullableNumber(raw.convertedScoreRaw),
+    supportLevelRaw: toStringValue(raw.supportLevelRaw) || null,
+    calculationMemo: toStringValue(raw.calculationMemo) || null,
+    calculatedAt: toStringValue(raw.calculatedAt) || null,
+    comprehensiveTotalScoreRaw: toNullableNumber(raw.comprehensiveTotalScoreRaw),
+    academicWeightedScoreRaw: toNullableNumber(raw.academicWeightedScoreRaw),
+    careerWeightedScoreRaw: toNullableNumber(raw.careerWeightedScoreRaw),
+    communityWeightedScoreRaw: toNullableNumber(raw.communityWeightedScoreRaw),
+    academicCompetencyScoreRaw: toNullableNumber(raw.academicCompetencyScoreRaw),
+    careerCompetencyScoreRaw: toNullableNumber(raw.careerCompetencyScoreRaw),
+    communityCompetencyScoreRaw: toNullableNumber(raw.communityCompetencyScoreRaw),
+  };
+}
+
 function normalizeSearchItem(raw: unknown): SearchItem | null {
   if (!raw || typeof raw !== "object") return null;
 
@@ -363,6 +390,13 @@ function normalizeSearchItem(raw: unknown): SearchItem | null {
     item.converted70_2026 && typeof item.converted70_2026 === "object"
       ? (item.converted70_2026 as Record<string, unknown>)
       : null;
+
+  const rawPremium =
+    item.premium && typeof item.premium === "object"
+      ? (item.premium as Record<string, unknown>)
+      : null;
+
+  const analysisMeta = parseSearchAnalysisMeta(item.analysisMeta);
 
   const id = toStringValue(item.id);
   if (!id) return null;
@@ -413,6 +447,33 @@ function normalizeSearchItem(raw: unknown): SearchItem | null {
           ? "-"
           : toDisplayText(rawConverted70Value)),
     },
+    premium: rawPremium
+      ? {
+          locked: rawPremium.locked === true,
+          items: parseUnknownArray(rawPremium.items).map((premiumItem) => {
+            const rawItem =
+              typeof premiumItem === "object" && premiumItem
+                ? (premiumItem as Record<string, unknown>)
+                : {};
+
+            const rawPremiumMeta =
+              rawItem.premium && typeof rawItem.premium === "object"
+                ? (rawItem.premium as Record<string, unknown>)
+                : null;
+
+            return {
+              label: toStringValue(rawItem.label) || "",
+              value: toStringValue(rawItem.value) || "-",
+              premium: rawPremiumMeta
+                ? {
+                    locked: rawPremiumMeta.locked === true,
+                  }
+                : undefined,
+            };
+          }),
+        }
+      : undefined,
+    analysisMeta,
   };
 }
 
@@ -443,6 +504,11 @@ function normalizeDetailItem(raw: unknown): DetailItem | null {
   const rawScoreTrend =
     rawCharts?.scoreTrend && typeof rawCharts.scoreTrend === "object"
       ? (rawCharts.scoreTrend as Record<string, unknown>)
+      : null;
+  const rawComprehensiveCompetency =
+    rawCharts?.comprehensiveCompetency &&
+    typeof rawCharts.comprehensiveCompetency === "object"
+      ? (rawCharts.comprehensiveCompetency as Record<string, unknown>)
       : null;
   const rawPremium =
     item.premium && typeof item.premium === "object"
@@ -616,6 +682,35 @@ function normalizeDetailItem(raw: unknown): DetailItem | null {
           };
         }),
       },
+      comprehensiveCompetency: rawComprehensiveCompetency
+        ? {
+            title:
+              toStringValue(rawComprehensiveCompetency.title) || "대학별 종합전형 비율",
+            subtitle: toStringValue(rawComprehensiveCompetency.subtitle),
+            locked: Boolean(rawComprehensiveCompetency.locked ?? true),
+            items: parseUnknownArray(rawComprehensiveCompetency.items).map((chartItem) => {
+              const rawChartItem =
+                typeof chartItem === "object" && chartItem
+                  ? (chartItem as Record<string, unknown>)
+                  : {};
+
+              const key = toStringValue(rawChartItem.key);
+
+              return {
+                key:
+                  key === "career" || key === "community" ? key : "academic",
+                label: toStringValue(rawChartItem.label),
+                description: toStringValue(rawChartItem.description),
+                universityRatioPercent: toNullableNumber(rawChartItem.universityRatioPercent) ?? 0,
+                questionCount: toNullableNumber(rawChartItem.questionCount) ?? 0,
+                userScore: toNullableNumber(rawChartItem.userScore),
+                userMaxScore: toNullableNumber(rawChartItem.userMaxScore),
+                userPercent: toNullableNumber(rawChartItem.userPercent),
+                weightedPercent: toNullableNumber(rawChartItem.weightedPercent),
+              };
+            }),
+          }
+        : null,
     },
     premium: {
       locked: Boolean(rawPremium?.locked ?? true),
@@ -890,371 +985,6 @@ function FilterSelect({
   );
 }
 
-function SummaryTable({ fields }: { fields: DetailItem["summaryFields"] }) {
-  const fieldMap = new Map(fields.map((field) => [field.label, field] as const));
-
-  const orderedFields: SummaryField[] = [
-    fieldMap.get("전형방법"),
-    fieldMap.get("학생부반영"),
-    fieldMap.get("최저학력기준"),
-    fieldMap.get("원서접수"),
-    fieldMap.get("1차합격"),
-    fieldMap.get("논술/면접") ?? fieldMap.get("실기/면접"),
-    fieldMap.get("최종합격"),
-  ].filter((field): field is SummaryField => Boolean(field));
-
-  const specialField = fieldMap.get("전형특기사항") ?? fieldMap.get("특기사항");
-  const colCount = Math.max(orderedFields.length, 1);
-
-  return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
-      <div
-        className="grid border-b border-slate-200 bg-slate-50 text-[12px] font-bold text-slate-700"
-        style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
-      >
-        {orderedFields.map((field, index) => (
-          <div
-            key={`head-${field.label}-${index}`}
-            className={cn(
-              "px-3 py-2",
-              index < orderedFields.length - 1 && "border-r border-slate-200",
-            )}
-          >
-            {field.label}
-          </div>
-        ))}
-      </div>
-
-      <div
-        className="grid bg-white text-[12px] text-slate-800"
-        style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
-      >
-        {orderedFields.map((field, index) => (
-          <div
-            key={`body-${field.label}-${index}`}
-            className={cn(
-              "min-h-[42px] px-3 py-1.5 leading-5",
-              index < orderedFields.length - 1 && "border-r border-slate-200",
-            )}
-          >
-            {field.value}
-          </div>
-        ))}
-      </div>
-
-      {specialField ? (
-        <div className="border-t border-slate-200 bg-white px-3 py-2.5">
-          <div className="flex items-start gap-3">
-            <div className="w-[96px] shrink-0 text-[12px] font-bold text-slate-700">
-              전형특기사항
-            </div>
-            <div className="min-w-0 flex-1 break-words text-[12px] leading-5 text-slate-800">
-              {specialField.value}
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function YearDataTable({ rows }: { rows: YearRow[] }) {
-  const headers = [
-    "학년도",
-    "모집인원(명)",
-    "지원인원(명)",
-    "경쟁률",
-    "충원",
-    "최저충족률",
-    "최저충족인원",
-    "실질경쟁률",
-    "성적50%(등급)",
-    "성적70%(등급)",
-    "환산50%",
-    "환산70%",
-  ];
-
-  return (
-    <div className="overflow-hidden rounded-lg border border-slate-200">
-      <div className="grid grid-cols-12 bg-slate-50 text-[11px] font-bold text-slate-700">
-        {headers.map((header, index) => (
-          <div
-            key={header}
-            className={cn(
-              "px-2 py-2 text-center",
-              index < headers.length - 1 && "border-r border-slate-200",
-            )}
-          >
-            {header}
-          </div>
-        ))}
-      </div>
-
-      {rows.map((row) => (
-        <div
-          key={row.year}
-          className="grid grid-cols-12 border-t border-slate-200 bg-white text-[11px] text-slate-800"
-        >
-          {[
-            row.year,
-            row.recruitmentCount,
-            row.applicantCount,
-            row.competitionRate,
-            row.additionalPassCount,
-            row.minSatisfiedRate,
-            row.minSatisfiedCount,
-            row.actualCompetitionRate,
-            row.score50,
-            row.score70,
-            row.converted50,
-            row.converted70,
-          ].map((cell, index) => (
-            <div
-              key={`${row.year}-${index}`}
-              className={cn(
-                "px-2 py-2 text-center",
-                index < 11 && "border-r border-slate-200",
-              )}
-            >
-              {cell}
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function MiniLineChart({
-  title,
-  labels,
-  series,
-  colors = ["#2563eb", "#dc2626"],
-}: {
-  title: string;
-  labels: string[];
-  series: ChartSeries[];
-  colors?: string[];
-}) {
-  const width = 234;
-  const height = 92;
-  const paddingX = 18;
-  const paddingY = 16;
-
-  const isBarSeries = (name: string) => name.includes("모집인원");
-  const lineSeries = series.filter((item) => !isBarSeries(item.name));
-  const barSeries = series.filter((item) => isBarSeries(item.name));
-
-  const lineValues = lineSeries.flatMap((s) =>
-    s.data.filter((v): v is number => typeof v === "number" && Number.isFinite(v)),
-  );
-  const barValues = barSeries.flatMap((s) =>
-    s.data.filter((v): v is number => typeof v === "number" && Number.isFinite(v)),
-  );
-
-  const lineMax = Math.max(...lineValues, 1);
-  const lineMin = Math.min(...lineValues, 0);
-  const lineRange = Math.max(lineMax - lineMin, 1);
-  const barMax = Math.max(...barValues, 1);
-
-  function pointX(index: number) {
-    if (labels.length <= 1) return width / 2;
-    return paddingX + (index * (width - paddingX * 2)) / (labels.length - 1);
-  }
-
-  function linePointY(value: number) {
-    return height - paddingY - ((value - lineMin) / lineRange) * (height - paddingY * 2);
-  }
-
-  function barTopY(value: number) {
-    return height - paddingY - (value / barMax) * (height - paddingY * 2);
-  }
-
-  function getSeriesColor(name: string) {
-    const index = series.findIndex((item) => item.name === name);
-    return colors[index % colors.length] ?? colors[0];
-  }
-
-  function buildLineSegments(data: (number | null)[]) {
-    const segments: string[] = [];
-    let current: string[] = [];
-
-    data.forEach((value, index) => {
-      if (typeof value === "number" && Number.isFinite(value)) {
-        current.push(`${pointX(index)},${linePointY(value)}`);
-      } else {
-        if (current.length >= 2) segments.push(current.join(" "));
-        current = [];
-      }
-    });
-
-    if (current.length >= 2) segments.push(current.join(" "));
-    return segments;
-  }
-
-  const step = labels.length > 1 ? (width - paddingX * 2) / (labels.length - 1) : 40;
-  const barWidth = Math.min(24, Math.max(14, step * 0.32));
-
-  return (
-    <div className="ml-auto w-full rounded-lg border border-slate-200 bg-white p-2.5 xl:max-w-[286px]">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="text-[11px] font-bold text-slate-800">{title}</div>
-        <div className="flex flex-wrap items-center gap-2">
-          {series.map((entry) => (
-            <div key={entry.name} className="flex items-center gap-1 text-[10px] text-slate-600">
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: getSeriesColor(entry.name) }}
-              />
-              <span>{entry.name}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-[92px] w-full">
-        {[0, 1, 2, 3].map((tick) => {
-          const y = paddingY + (tick * (height - paddingY * 2)) / 3;
-          return (
-            <line
-              key={tick}
-              x1={paddingX}
-              y1={y}
-              x2={width - paddingX}
-              y2={y}
-              stroke="#e5e7eb"
-              strokeWidth="1"
-            />
-          );
-        })}
-
-        {barSeries.map((entry) => {
-          const color = getSeriesColor(entry.name);
-
-          return (
-            <g key={entry.name}>
-              {entry.data.map((value, index) => {
-                if (typeof value !== "number" || !Number.isFinite(value)) return null;
-
-                const x = pointX(index) - barWidth / 2;
-                const y = barTopY(value);
-                const barHeight = height - paddingY - y;
-                const safeBarHeight = Math.max(barHeight, 2);
-
-                return (
-                  <g key={`${entry.name}-${index}`}>
-                    <rect
-                      x={x}
-                      y={y}
-                      width={barWidth}
-                      height={safeBarHeight}
-                      rx="3"
-                      fill={color}
-                      opacity="0.9"
-                    />
-                    <text
-                      x={x + barWidth / 2}
-                      y={y + safeBarHeight / 2 + 3}
-                      textAnchor="middle"
-                      fontSize="9"
-                      fill="#ffffff"
-                      fontWeight="700"
-                    >
-                      {value}
-                    </text>
-                  </g>
-                );
-              })}
-            </g>
-          );
-        })}
-
-        {lineSeries.map((entry) => {
-          const color = getSeriesColor(entry.name);
-          const segments = buildLineSegments(entry.data);
-
-          return (
-            <g key={entry.name}>
-              {segments.map((points, idx) => (
-                <polyline
-                  key={`${entry.name}-seg-${idx}`}
-                  fill="none"
-                  stroke={color}
-                  strokeWidth="2"
-                  points={points}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              ))}
-
-              {entry.data.map((value, index) => {
-                if (typeof value !== "number" || !Number.isFinite(value)) return null;
-
-                return (
-                  <g key={`${entry.name}-${index}`}>
-                    <circle cx={pointX(index)} cy={linePointY(value)} r="3" fill={color} />
-                    <text
-                      x={pointX(index)}
-                      y={linePointY(value) - 7}
-                      textAnchor="middle"
-                      fontSize="9"
-                      fill={color}
-                      fontWeight="700"
-                    >
-                      {value}
-                    </text>
-                  </g>
-                );
-              })}
-            </g>
-          );
-        })}
-
-        {labels.map((label, index) => (
-          <text
-            key={`${label}-${index}`}
-            x={pointX(index)}
-            y={height - 2}
-            textAnchor="middle"
-            fontSize="9"
-            fill="#475569"
-          >
-            {label}
-          </text>
-        ))}
-      </svg>
-    </div>
-  );
-}
-
-function DetailExpandedPanel({ detail }: { detail: DetailItem }) {
-  return (
-    <div className="rounded-lg border-[3px] border-blue-900 bg-blue-50 p-3 shadow-[0_0_0_3px_rgba(30,58,138,0.22)]">
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_310px]">
-        <div className="space-y-3">
-          <SummaryTable fields={detail.summaryFields} />
-          <YearDataTable rows={detail.yearTable.rows} />
-        </div>
-
-        <div className="space-y-3">
-          <MiniLineChart
-            title={detail.charts.competitionRate.title}
-            labels={detail.charts.competitionRate.labels}
-            series={detail.charts.competitionRate.series}
-            colors={["#2563eb", "#dc2626"]}
-          />
-          <MiniLineChart
-            title={detail.charts.scoreTrend.title}
-            labels={detail.charts.scoreTrend.labels}
-            series={detail.charts.scoreTrend.series}
-            colors={["#2563eb", "#dc2626"]}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function MobileResultCard({
   item,
   detail,
@@ -1352,11 +1082,12 @@ function MobileResultCard({
         </button>
       </div>
 
-      {isExpanded && detail ? (
-        <div className="mt-3">
-          <DetailExpandedPanel detail={detail} />
-        </div>
-      ) : null}
+{isExpanded && detail ? (
+  <div className="mt-3">
+    <AdmissionDetailContent detail={detail} />
+  </div>
+) : null}
+
     </div>
   );
 }
@@ -1495,11 +1226,12 @@ function DesktopRow({
         </div>
       </div>
 
-      {isExpanded && detail ? (
-        <div className="border-t border-slate-200 bg-[#f8fbff] px-3 py-3">
-          <DetailExpandedPanel detail={detail} />
-        </div>
-      ) : null}
+{isExpanded && detail ? (
+  <div className="border-t border-slate-200 bg-[#f8fbff] px-3 py-3">
+    <AdmissionDetailContent detail={detail} />
+  </div>
+) : null}
+
     </>
   );
 }
@@ -1678,9 +1410,10 @@ export default function AdmissionsPageClient({
     return await fetchDetail(id);
   }
 
-  function getEffectivePremiumUnlocked(itemId: string) {
-    const detail = detailMap[itemId];
+  function getEffectivePremiumUnlocked(item: SearchItem) {
+    const detail = detailMap[item.id];
     if (detail) return !detail.premium.locked;
+    if (item.premium) return !item.premium.locked;
     return premiumUnlocked;
   }
 
@@ -2009,10 +1742,10 @@ export default function AdmissionsPageClient({
                     const isExpanded = expandedId === item.id;
                     const isLoading = loadingDetailId === item.id;
                     const isSaving = savingItemId === item.id;
-                    const unlocked = getEffectivePremiumUnlocked(item.id);
+                    const unlocked = getEffectivePremiumUnlocked(item);
                     const saved = getEffectiveSaved(item.id);
-                    const scoreDisplay = getScoreDisplay(detail, unlocked);
-                    const possibilityDisplay = getPossibilityDisplay(detail, unlocked);
+                    const scoreDisplay = getScoreDisplay(item, detail, unlocked);
+                    const possibilityDisplay = getPossibilityDisplay(item, detail, unlocked);
 
                     return (
                       <MobileResultCard
@@ -2041,10 +1774,10 @@ export default function AdmissionsPageClient({
                       const isExpanded = expandedId === item.id;
                       const isLoading = loadingDetailId === item.id;
                       const isSaving = savingItemId === item.id;
-                      const unlocked = getEffectivePremiumUnlocked(item.id);
+                      const unlocked = getEffectivePremiumUnlocked(item);
                       const saved = getEffectiveSaved(item.id);
-                      const scoreDisplay = getScoreDisplay(detail, unlocked);
-                      const possibilityDisplay = getPossibilityDisplay(detail, unlocked);
+                      const scoreDisplay = getScoreDisplay(item, detail, unlocked);
+                      const possibilityDisplay = getPossibilityDisplay(item, detail, unlocked);
 
                       return (
                         <DesktopRow

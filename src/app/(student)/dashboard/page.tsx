@@ -76,15 +76,58 @@ type HakjongFitSummaryPayload =
       message: string;
     };
 
+
+type SchoolRecordGradeRow = {
+  id?: string;
+  schoolYear: number | string | null;
+  semester: number | string | null;
+  academicTermLabel?: string | null;
+  subjectGroupSnapshot?: string | null;
+  completionTypeSnapshot?: string | null;
+  subjectName?: string | null;
+  credits: number | string | null;
+  grade: number | string | null;
+};
+
+type SchoolRecordTrendPoint = {
+  label: string;
+  averageGrade: number | null;
+};
+
+type SchoolRecordSubjectAveragePoint = {
+  label: string;
+  averageGrade: number | null;
+  display: string;
+};
+
+
+type SchoolRecordApiPayload = {
+  message?: string;
+  rows?: unknown;
+  grades?: unknown;
+  items?: unknown;
+  records?: unknown;
+  data?: unknown;
+  result?: unknown;
+  schoolRecords?: unknown;
+  schoolRecordGrades?: unknown;
+};
+
+const SCHOOL_RECORD_API_CANDIDATES = [
+  '/api/student/school-record-grades',
+  '/api/student/school-records/grades',
+  '/api/student/school-records',
+] as const;
+
 const DASHBOARD_CHART_CARD_CLASS =
-  'rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_36px_rgba(15,23,42,0.06)] min-h-[340px] sm:min-h-[360px]';
+  'rounded-[24px] border-2 border-blue-950 bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)] p-5 shadow-[0_18px_44px_rgba(15,23,42,0.12)] min-h-[340px] sm:min-h-[360px]';
 
 const DASHBOARD_CHART_PLOT_HEIGHT = 210;
 
 const DASHBOARD_CHART_PLOT_CLASS = 'h-[210px] sm:h-[220px]';
 
 const DASHBOARD_CHART_EMPTY_CLASS =
-  'flex h-[210px] sm:h-[220px] items-center justify-center rounded-[20px] border border-dashed border-slate-300 bg-slate-50 text-sm font-semibold text-slate-500';
+  'flex h-[210px] sm:h-[220px] items-center justify-center rounded-[20px] border-2 border-dashed border-blue-300 bg-[linear-gradient(180deg,#eff6ff_0%,#dbeafe_100%)] text-sm font-semibold text-blue-950';
 
 function toNumber(value: unknown): number | null {
   if (typeof value === 'number') {
@@ -112,7 +155,7 @@ function average(values: Array<number | null | undefined>): number | null {
 
 function formatGrade(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return '-';
-  return Number.isInteger(value) ? `${value}` : value.toFixed(1);
+  return value.toFixed(2);
 }
 
 function formatPercentile(value: number | null | undefined): string {
@@ -181,6 +224,308 @@ function normalizeGradeToScore(grade: number | null): number | null {
   if (grade == null) return null;
   const clamped = Math.min(Math.max(grade, 1), 9);
   return 100 - (clamped - 1) * 12.5;
+}
+
+
+function toObjectRecord(value: unknown): Record<string, unknown> | null {
+  return value != null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function normalizeSchoolRecordGradeRow(value: unknown): SchoolRecordGradeRow | null {
+  const row = toObjectRecord(value);
+  if (!row) return null;
+
+  return {
+    id: typeof row.id === 'string' ? row.id : undefined,
+    schoolYear: (row.schoolYear ?? row.year ?? row.gradeLevel ?? null) as number | string | null,
+    semester: (row.semester ?? row.term ?? row.academicSemester ?? null) as number | string | null,
+    academicTermLabel:
+      typeof row.academicTermLabel === 'string'
+        ? row.academicTermLabel
+        : typeof row.termLabel === 'string'
+          ? row.termLabel
+          : typeof row.semesterLabel === 'string'
+            ? row.semesterLabel
+            : null,
+    subjectGroupSnapshot:
+      typeof row.subjectGroupSnapshot === 'string'
+        ? row.subjectGroupSnapshot
+        : typeof row.subjectGroup === 'string'
+          ? row.subjectGroup
+          : typeof row.subjectCategory === 'string'
+            ? row.subjectCategory
+            : null,
+    completionTypeSnapshot:
+      typeof row.completionTypeSnapshot === 'string'
+        ? row.completionTypeSnapshot
+        : typeof row.completionType === 'string'
+          ? row.completionType
+          : typeof row.courseType === 'string'
+            ? row.courseType
+            : null,
+    subjectName:
+      typeof row.subjectName === 'string'
+        ? row.subjectName
+        : typeof row.courseName === 'string'
+          ? row.courseName
+          : typeof row.name === 'string'
+            ? row.name
+            : null,
+    credits: (row.credits ?? row.credit ?? row.unit ?? null) as number | string | null,
+    grade: (row.grade ?? row.achievementGrade ?? row.rankGrade ?? null) as number | string | null,
+  };
+}
+
+function collectSchoolRecordRows(value: unknown): SchoolRecordGradeRow[] {
+  if (Array.isArray(value)) {
+    return value
+      .map(normalizeSchoolRecordGradeRow)
+      .filter((row): row is SchoolRecordGradeRow => row != null);
+  }
+
+  const record = toObjectRecord(value);
+  if (!record) return [];
+
+  const nestedCandidates = [
+    record.rows,
+    record.grades,
+    record.items,
+    record.records,
+    record.data,
+    record.result,
+    record.schoolRecords,
+    record.schoolRecordGrades,
+  ];
+
+  for (const candidate of nestedCandidates) {
+    const rows = collectSchoolRecordRows(candidate);
+    if (rows.length) return rows;
+  }
+
+  const singleRow = normalizeSchoolRecordGradeRow(record);
+  return singleRow ? [singleRow] : [];
+}
+
+async function loadSchoolRecordRows(): Promise<{
+  rows: SchoolRecordGradeRow[];
+  error: string | null;
+}> {
+  let lastError: string | null = null;
+
+  for (const endpoint of SCHOOL_RECORD_API_CANDIDATES) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | SchoolRecordApiPayload
+        | unknown;
+
+      if (response.status === 404) {
+        continue;
+      }
+
+      if (!response.ok) {
+        const payloadRecord = toObjectRecord(payload);
+        lastError =
+          payloadRecord && typeof payloadRecord.message === 'string'
+            ? payloadRecord.message
+            : '내신 성적 데이터를 불러오지 못했습니다.';
+        continue;
+      }
+
+      return {
+        rows: collectSchoolRecordRows(payload),
+        error: null,
+      };
+    } catch (error) {
+      lastError =
+        error instanceof Error
+          ? error.message
+          : '내신 성적 데이터를 불러오지 못했습니다.';
+    }
+  }
+
+  return {
+    rows: [],
+    error: lastError ?? '내신 성적 API를 찾지 못했습니다.',
+  };
+}
+
+
+const SCHOOL_RECORD_SUBJECT_ORDER = ['국어', '수학', '영어', '사회', '과학'] as const;
+
+function schoolGradeToChartY(value: number, height: number): number {
+  const top = 18;
+  const bottom = height - 18;
+  const clamped = Math.min(Math.max(value, 1), 9);
+  return top + ((clamped - 1) / 8) * (bottom - top);
+}
+
+function normalizeSchoolText(value: unknown): string {
+  return String(value ?? '')
+    .replace(/\s+/g, '')
+    .toLowerCase();
+}
+
+function getNormalizedSchoolSubjectGroup(row: SchoolRecordGradeRow): string | null {
+  const raw = normalizeSchoolText(row.subjectGroupSnapshot ?? row.subjectName ?? '');
+
+  if (!raw) return null;
+  if (raw.includes('국어')) return '국어';
+  if (raw.includes('수학')) return '수학';
+  if (raw.includes('영어')) return '영어';
+  if (raw.includes('사회') || raw.includes('역사') || raw.includes('한국사')) return '사회';
+  if (raw.includes('과학')) return '과학';
+
+  return null;
+}
+
+function isCommonOrGeneralSelectionCourse(row: SchoolRecordGradeRow): boolean {
+  const normalized = normalizeSchoolText(row.completionTypeSnapshot);
+  return normalized.includes('공통') || normalized.includes('일반선택');
+}
+
+function getUsableSchoolRecordGrade(row: SchoolRecordGradeRow): number | null {
+  const grade = toNumber(row.grade);
+  return grade != null && Number.isFinite(grade) ? grade : null;
+}
+
+function getUsableSchoolRecordCredits(row: SchoolRecordGradeRow): number | null {
+  const credits = toNumber(row.credits);
+  return credits != null && Number.isFinite(credits) && credits > 0 ? credits : null;
+}
+
+function hasUsableSchoolRecordScore(row: SchoolRecordGradeRow): boolean {
+  return getUsableSchoolRecordGrade(row) != null && getUsableSchoolRecordCredits(row) != null;
+}
+
+function calculateSchoolRecordWeightedAverage(rows: SchoolRecordGradeRow[]): number | null {
+  const usableRows = rows.filter(hasUsableSchoolRecordScore);
+
+  if (!usableRows.length) return null;
+
+  const totalCredits = usableRows.reduce(
+    (sum, row) => sum + (getUsableSchoolRecordCredits(row) ?? 0),
+    0,
+  );
+
+  if (totalCredits <= 0) return null;
+
+  const weightedSum = usableRows.reduce(
+    (sum, row) =>
+      sum +
+      (getUsableSchoolRecordGrade(row) ?? 0) * (getUsableSchoolRecordCredits(row) ?? 0),
+    0,
+  );
+
+  return Number((weightedSum / totalCredits).toFixed(2));
+}
+
+function buildSchoolRecordSummaryAverages(rows: SchoolRecordGradeRow[]) {
+  const commonGeneralRows = rows.filter(
+    (row) => hasUsableSchoolRecordScore(row) && isCommonOrGeneralSelectionCourse(row),
+  );
+
+  const matchesSubjects = (
+    row: SchoolRecordGradeRow,
+    subjects: readonly string[],
+  ): boolean => {
+    const group = getNormalizedSchoolSubjectGroup(row);
+    return group != null && subjects.includes(group);
+  };
+
+  return {
+    koreanMathEnglishSocial: calculateSchoolRecordWeightedAverage(
+      commonGeneralRows.filter((row) =>
+        matchesSubjects(row, ['국어', '수학', '영어', '사회']),
+      ),
+    ),
+    koreanMathEnglishScience: calculateSchoolRecordWeightedAverage(
+      commonGeneralRows.filter((row) =>
+        matchesSubjects(row, ['국어', '수학', '영어', '과학']),
+      ),
+    ),
+    koreanMathEnglishSocialScience: calculateSchoolRecordWeightedAverage(
+      commonGeneralRows.filter((row) =>
+        matchesSubjects(row, ['국어', '수학', '영어', '사회', '과학']),
+      ),
+    ),
+    allSubjects: calculateSchoolRecordWeightedAverage(rows.filter(hasUsableSchoolRecordScore)),
+  };
+}
+
+function getSchoolRecordSemesterSortValue(row: SchoolRecordGradeRow): number {
+  const schoolYear = toNumber(row.schoolYear) ?? 0;
+  const semester = toNumber(row.semester) ?? 0;
+  return schoolYear * 10 + semester;
+}
+
+function getSchoolRecordSemesterLabel(row: SchoolRecordGradeRow): string {
+  const schoolYear = toNumber(row.schoolYear);
+  const semester = toNumber(row.semester);
+
+  if (schoolYear != null && semester != null) {
+    return `${schoolYear}학년 ${semester}학기`;
+  }
+
+  if (typeof row.academicTermLabel === 'string' && row.academicTermLabel.trim()) {
+    return row.academicTermLabel.trim();
+  }
+
+  return '학기';
+}
+
+function buildSchoolRecordTrendData(rows: SchoolRecordGradeRow[]): SchoolRecordTrendPoint[] {
+  const usableRows = rows.filter(hasUsableSchoolRecordScore);
+  const semesterMap = new Map<string, { order: number; label: string; rows: SchoolRecordGradeRow[] }>();
+
+  usableRows.forEach((row) => {
+    const key = `${toNumber(row.schoolYear) ?? 'x'}-${toNumber(row.semester) ?? 'x'}`;
+    const existing = semesterMap.get(key);
+
+    if (existing) {
+      existing.rows.push(row);
+      return;
+    }
+
+    semesterMap.set(key, {
+      order: getSchoolRecordSemesterSortValue(row),
+      label: getSchoolRecordSemesterLabel(row),
+      rows: [row],
+    });
+  });
+
+  return [...semesterMap.values()]
+    .sort((a, b) => a.order - b.order)
+    .map((entry) => ({
+      label: entry.label,
+      averageGrade: calculateSchoolRecordWeightedAverage(entry.rows),
+    }));
+}
+
+function buildSchoolRecordSubjectAverageData(
+  rows: SchoolRecordGradeRow[],
+): SchoolRecordSubjectAveragePoint[] {
+  const usableRows = rows.filter(
+    (row) => hasUsableSchoolRecordScore(row) && getNormalizedSchoolSubjectGroup(row) != null,
+  );
+
+  return SCHOOL_RECORD_SUBJECT_ORDER.map((label) => {
+    const averageGrade = calculateSchoolRecordWeightedAverage(
+      usableRows.filter((row) => getNormalizedSchoolSubjectGroup(row) === label),
+    );
+
+    return {
+      label,
+      averageGrade,
+      display: averageGrade == null ? '-' : `${formatGrade(averageGrade)}등급`,
+    };
+  });
 }
 
 function getLatestAverageGrade(exam: SavedMockExamRecord | null): number | null {
@@ -463,7 +808,7 @@ function SummaryMetricCard({
   value: ReactNode;
 }) {
   return (
-    <article className="rounded-[22px] border border-slate-200 bg-white px-5 py-4 shadow-[0_12px_36px_rgba(15,23,42,0.08)]">
+    <article className="rounded-[22px] border-2 border-blue-950 bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)] px-5 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
       <div className="flex items-center gap-4">
         <div
           className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${iconClassName}`}
@@ -833,6 +1178,254 @@ function SubjectComparisonChart({
   );
 }
 
+function SchoolRecordTrendChart({ data }: { data: SchoolRecordTrendPoint[] }) {
+  const chartWidth = 560;
+  const chartHeight = DASHBOARD_CHART_PLOT_HEIGHT;
+  const paddingX = 28;
+
+  const points = data.map((item, index) => {
+    const x =
+      data.length <= 1
+        ? chartWidth / 2
+        : paddingX + (index * (chartWidth - paddingX * 2)) / (data.length - 1);
+
+    return {
+      ...item,
+      x,
+    };
+  });
+
+  const gradePoints = points
+    .filter((item) => item.averageGrade != null)
+    .map((item) => ({
+      ...item,
+      y: schoolGradeToChartY(item.averageGrade as number, chartHeight),
+    }));
+
+  const gradePath = buildPolylinePath(gradePoints);
+  const hasData = gradePoints.length > 0;
+
+  return (
+    <article className={DASHBOARD_CHART_CARD_CLASS}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-extrabold tracking-tight text-slate-950">최근 성적 추이</h3>
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+              학기별 전과목 평균
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        {hasData ? (
+          <div className={`flex gap-3 ${DASHBOARD_CHART_PLOT_CLASS}`}>
+            <div className="flex h-full w-6 shrink-0 flex-col justify-between pb-4 text-[11px] font-semibold text-slate-400">
+              {[1, 3, 5, 7, 9].map((label) => (
+                <span key={label}>{label}</span>
+              ))}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <svg
+                viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                className="h-full w-full"
+                preserveAspectRatio="none"
+              >
+                {[1, 3, 5, 7, 9].map((line) => {
+                  const y = schoolGradeToChartY(line, chartHeight);
+                  return (
+                    <line
+                      key={`school-${line}`}
+                      x1="0"
+                      y1={y}
+                      x2={chartWidth}
+                      y2={y}
+                      stroke="#e5e7eb"
+                      strokeDasharray="3 4"
+                    />
+                  );
+                })}
+
+                {gradePath ? (
+                  <path
+                    d={gradePath}
+                    fill="none"
+                    stroke="#2563eb"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ) : null}
+
+                {gradePoints.map((point) => (
+                  <g key={`school-grade-${point.label}`}>
+                    <circle cx={point.x} cy={point.y} r="4.5" fill="#2563eb" />
+                    <text
+                      x={point.x}
+                      y={point.y - 10}
+                      textAnchor="middle"
+                      fontSize="11"
+                      fontWeight="700"
+                      fill="#1e3a8a"
+                    >
+                      {formatGrade(point.averageGrade)}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+
+              <div className="mt-2 flex items-start justify-between gap-2">
+                {points.map((point) => (
+                  <span
+                    key={point.label}
+                    className="min-w-0 flex-1 text-center text-[11px] font-semibold text-slate-500"
+                  >
+                    {point.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className={DASHBOARD_CHART_EMPTY_CLASS}>
+            학기별 내신 데이터가 아직 연결되지 않았습니다.
+          </div>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function SchoolRecordSubjectAverageChart({
+  data,
+}: {
+  data: SchoolRecordSubjectAveragePoint[];
+}) {
+  const chartWidth = 560;
+  const chartHeight = DASHBOARD_CHART_PLOT_HEIGHT;
+  const groupWidth = chartWidth / Math.max(data.length, 1);
+  const barWidth = 28;
+  const hasData = data.some((item) => item.averageGrade != null);
+
+  return (
+    <article className={DASHBOARD_CHART_CARD_CLASS}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-extrabold tracking-tight text-slate-950">
+            과목별 평균 성적
+          </h3>
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-sm bg-blue-800" />
+              전학년 이수단위 반영 평균
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        {hasData ? (
+          <div className={`flex gap-3 ${DASHBOARD_CHART_PLOT_CLASS}`}>
+            <div className="flex h-full w-6 shrink-0 flex-col justify-between pb-4 text-[11px] font-semibold text-slate-400">
+              {[1, 3, 5, 7, 9].map((label) => (
+                <span key={label}>{label}</span>
+              ))}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <svg
+                viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                className="h-full w-full"
+                preserveAspectRatio="none"
+              >
+                {[1, 3, 5, 7, 9].map((line) => {
+                  const y = schoolGradeToChartY(line, chartHeight);
+                  return (
+                    <line
+                      key={`subject-${line}`}
+                      x1="0"
+                      y1={y}
+                      x2={chartWidth}
+                      y2={y}
+                      stroke="#e5e7eb"
+                    />
+                  );
+                })}
+
+                {data.map((item, index) => {
+                  const centerX = groupWidth * index + groupWidth / 2;
+                  const y =
+                    item.averageGrade == null
+                      ? chartHeight - 18
+                      : schoolGradeToChartY(item.averageGrade, chartHeight);
+                  const height =
+                    item.averageGrade == null ? 0 : chartHeight - 18 - y;
+
+                  return (
+                    <g key={item.label}>
+                      {item.averageGrade != null ? (
+                        <>
+                          <rect
+                            x={centerX - barWidth / 2}
+                            y={y}
+                            width={barWidth}
+                            height={height}
+                            rx="6"
+                            fill="#1e40af"
+                          />
+                          <text
+                            x={centerX}
+                            y={y - 8}
+                            textAnchor="middle"
+                            fontSize="11"
+                            fontWeight="700"
+                            fill="#0f172a"
+                          >
+                            {item.display}
+                          </text>
+                        </>
+                      ) : (
+                        <text
+                          x={centerX}
+                          y={chartHeight - 28}
+                          textAnchor="middle"
+                          fontSize="11"
+                          fontWeight="700"
+                          fill="#94a3b8"
+                        >
+                          -
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+
+              <div className="mt-2 flex items-start justify-between gap-2">
+                {data.map((item) => (
+                  <span
+                    key={item.label}
+                    className="min-w-0 flex-1 text-center text-[11px] font-semibold text-slate-600"
+                  >
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className={DASHBOARD_CHART_EMPTY_CLASS}>
+            과목별 평균을 계산할 내신 데이터가 아직 연결되지 않았습니다.
+          </div>
+        )}
+      </div>
+    </article>
+  );
+}
+
 function HakjongFitDashboardChart({
   domains,
 }: {
@@ -925,6 +1518,10 @@ export default function DashboardPage() {
   const [isHakjongLoading, setIsHakjongLoading] = useState(true);
   const [hakjongLoadError, setHakjongLoadError] = useState<string | null>(null);
 
+  const [schoolRecordRows, setSchoolRecordRows] = useState<SchoolRecordGradeRow[]>([]);
+  const [isSchoolRecordLoading, setIsSchoolRecordLoading] = useState(true);
+  const [schoolRecordLoadError, setSchoolRecordLoadError] = useState<string | null>(null);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -934,8 +1531,10 @@ export default function DashboardPage() {
         setLoadError(null);
         setIsHakjongLoading(true);
         setHakjongLoadError(null);
+        setIsSchoolRecordLoading(true);
+        setSchoolRecordLoadError(null);
 
-        const [mockExamResponse, hakjongResponse] = await Promise.all([
+        const [mockExamResponse, hakjongResponse, schoolRecordResult] = await Promise.all([
           fetch('/api/student/mock-exams', {
             method: 'GET',
             cache: 'no-store',
@@ -944,6 +1543,7 @@ export default function DashboardPage() {
             method: 'GET',
             cache: 'no-store',
           }),
+          loadSchoolRecordRows(),
         ]);
 
         const mockExamPayload = (await mockExamResponse.json().catch(() => null)) as
@@ -1000,6 +1600,8 @@ export default function DashboardPage() {
 
         setRecords(nextRecords);
         setHakjongDomains(nextHakjongDomains);
+        setSchoolRecordRows(schoolRecordResult.rows);
+        setSchoolRecordLoadError(schoolRecordResult.error);
       } catch (error) {
         if (!isMounted) return;
 
@@ -1010,10 +1612,12 @@ export default function DashboardPage() {
 
         setLoadError(message);
         setHakjongLoadError(message);
+        setSchoolRecordLoadError(message);
       } finally {
         if (isMounted) {
           setIsLoading(false);
           setIsHakjongLoading(false);
+          setIsSchoolRecordLoading(false);
         }
       }
     }
@@ -1056,6 +1660,18 @@ export default function DashboardPage() {
     return getSubjectComparisonData(latestExam, previousExam);
   }, [latestExam, previousExam]);
 
+  const schoolRecordSummary = useMemo(() => {
+    return buildSchoolRecordSummaryAverages(schoolRecordRows);
+  }, [schoolRecordRows]);
+
+  const schoolRecordTrendData = useMemo(() => {
+    return buildSchoolRecordTrendData(schoolRecordRows);
+  }, [schoolRecordRows]);
+
+  const schoolRecordSubjectAverageData = useMemo(() => {
+    return buildSchoolRecordSubjectAverageData(schoolRecordRows);
+  }, [schoolRecordRows]);
+
   const latestExamShortLabel = latestExam ? fullExamLabel(latestExam) : '데이터 없음';
   const previousExamShortLabel = previousExam ? fullExamLabel(previousExam) : '이전 없음';
 
@@ -1072,7 +1688,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-slate-200/80 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.08)]">
+      <section className="overflow-hidden rounded-[32px] border-2 border-blue-950 bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)] shadow-[0_30px_90px_rgba(15,23,42,0.14)]">
         <div className="relative overflow-hidden border-b border-blue-950 bg-[linear-gradient(135deg,#0f172a_0%,#172554_45%,#1d4ed8_100%)] px-5 py-7 sm:px-7 sm:py-8 lg:px-10">
           <div className="relative">
             <div className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em] text-white shadow-sm backdrop-blur-sm">
@@ -1090,7 +1706,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="p-6 lg:p-8">
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-6">
+          <div className="rounded-[24px] border-2 border-blue-900 bg-[linear-gradient(180deg,#eff6ff_0%,#dbeafe_100%)] p-6">
             <p className="text-sm text-slate-600">
               이 영역은 우선 유지했습니다. 내신 성적 요약 기준이 정해지면 모의고사 섹션 위쪽에 맞춰서 같은 스타일로 이어서 구성하면 됩니다.
             </p>
@@ -1098,7 +1714,114 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="space-y-4">
+      <section className="space-y-4 rounded-[30px] border-2 border-blue-950 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(239,246,255,0.92)_100%)] p-5 shadow-[0_22px_56px_rgba(15,23,42,0.10)] sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-extrabold tracking-tight text-slate-950">
+              내신 성적 요약
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              지정한 교과의 공통과목·일반선택과목 전과목을 이수단위 반영 방식으로 계산해 보여주는 영역입니다.
+            </p>
+          </div>
+
+          <span className="inline-flex h-10 items-center justify-center rounded-xl border-2 border-blue-950 bg-[linear-gradient(180deg,#ffffff_0%,#dbeafe_100%)] px-4 text-sm font-bold text-blue-950 shadow-sm">
+            계산식 기준 적용
+          </span>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <SummaryMetricCard
+            icon={<ClipboardIcon />}
+            iconClassName="bg-blue-50 text-blue-600"
+            title="국,수,영,사"
+            value={
+              <span>
+                {schoolRecordSummary.koreanMathEnglishSocial == null
+                  ? '--.--등급'
+                  : `${formatGrade(schoolRecordSummary.koreanMathEnglishSocial)}등급`}
+                <span className="mt-1 block text-[12px] font-semibold text-slate-500">
+                  공통 · 일반선택
+                </span>
+              </span>
+            }
+          />
+
+          <SummaryMetricCard
+            icon={<ChartIcon />}
+            iconClassName="bg-emerald-50 text-emerald-600"
+            title="국,수,영,과"
+            value={
+              <span>
+                {schoolRecordSummary.koreanMathEnglishScience == null
+                  ? '--.--등급'
+                  : `${formatGrade(schoolRecordSummary.koreanMathEnglishScience)}등급`}
+                <span className="mt-1 block text-[12px] font-semibold text-slate-500">
+                  공통 · 일반선택
+                </span>
+              </span>
+            }
+          />
+
+          <SummaryMetricCard
+            icon={<ArrowIcon />}
+            iconClassName="bg-orange-50 text-orange-500"
+            title="국,수,영,사,과"
+            value={
+              <span>
+                {schoolRecordSummary.koreanMathEnglishSocialScience == null
+                  ? '--.--등급'
+                  : `${formatGrade(schoolRecordSummary.koreanMathEnglishSocialScience)}등급`}
+                <span className="mt-1 block text-[12px] font-semibold text-slate-500">
+                  공통 · 일반선택
+                </span>
+              </span>
+            }
+          />
+
+          <SummaryMetricCard
+            icon={<StarIcon />}
+            iconClassName="bg-violet-50 text-violet-600"
+            title="전과목"
+            value={
+              <span>
+                {schoolRecordSummary.allSubjects == null
+                  ? '--.--등급'
+                  : `${formatGrade(schoolRecordSummary.allSubjects)}등급`}
+                <span className="mt-1 block text-[12px] font-semibold text-slate-500">
+                  등급·이수단위가 있는 모든 과목
+                </span>
+              </span>
+            }
+          />
+        </div>
+
+        {isSchoolRecordLoading ? (
+          <div className="rounded-[24px] border-2 border-blue-950 bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)] p-6 text-sm font-semibold text-blue-950 shadow-[0_14px_36px_rgba(15,23,42,0.10)]">
+            내신 성적 데이터를 불러오는 중입니다...
+          </div>
+        ) : schoolRecordLoadError ? (
+          <div className="rounded-[24px] border-2 border-red-500 bg-[linear-gradient(180deg,#fff1f2_0%,#ffe4e6_100%)] p-6 text-sm font-semibold text-red-700 shadow-[0_14px_36px_rgba(15,23,42,0.10)]">
+            {schoolRecordLoadError}
+          </div>
+        ) : !schoolRecordRows.length ? (
+          <div className="rounded-[24px] border-2 border-dashed border-blue-400 bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)] p-8 text-center shadow-[0_14px_36px_rgba(15,23,42,0.10)]">
+            <p className="text-base font-bold text-slate-900">
+              아직 연결된 내신 성적 데이터가 없습니다.
+            </p>
+            <p className="mt-2 text-sm text-slate-600">
+              학기별 과목 등급과 이수단위 데이터가 저장되면 카드와 그래프가 자동으로 표시됩니다.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-2">
+            <SchoolRecordTrendChart data={schoolRecordTrendData} />
+            <SchoolRecordSubjectAverageChart data={schoolRecordSubjectAverageData} />
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-4 rounded-[30px] border-2 border-blue-950 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(239,246,255,0.92)_100%)] p-5 shadow-[0_22px_56px_rgba(15,23,42,0.10)] sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-extrabold tracking-tight text-slate-950">
             모의고사 성적 요약
@@ -1106,22 +1829,22 @@ export default function DashboardPage() {
 
           <Link
             href="/student/mock-exams"
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            className="inline-flex h-10 items-center justify-center rounded-xl border-2 border-blue-950 bg-[linear-gradient(180deg,#ffffff_0%,#dbeafe_100%)] px-4 text-sm font-bold text-blue-950 shadow-sm transition hover:brightness-[0.98]"
           >
             성적 입력
           </Link>
         </div>
 
         {isLoading ? (
-          <div className="rounded-[24px] border border-slate-200 bg-white p-6 text-sm font-semibold text-slate-600 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+          <div className="rounded-[24px] border-2 border-blue-950 bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)] p-6 text-sm font-semibold text-blue-950 shadow-[0_14px_36px_rgba(15,23,42,0.10)]">
             모의고사 데이터를 불러오는 중입니다...
           </div>
         ) : loadError ? (
-          <div className="rounded-[24px] border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+          <div className="rounded-[24px] border-2 border-red-500 bg-[linear-gradient(180deg,#fff1f2_0%,#ffe4e6_100%)] p-6 text-sm font-semibold text-red-700 shadow-[0_14px_36px_rgba(15,23,42,0.10)]">
             {loadError}
           </div>
         ) : !savedExams.length ? (
-          <div className="rounded-[24px] border border-dashed border-slate-300 bg-white p-8 text-center shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+          <div className="rounded-[24px] border-2 border-dashed border-blue-400 bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)] p-8 text-center shadow-[0_14px_36px_rgba(15,23,42,0.10)]">
             <p className="text-base font-bold text-slate-900">
               아직 저장된 모의고사 성적이 없습니다.
             </p>
@@ -1182,14 +1905,14 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] font-semibold text-slate-600">
+            <div className="rounded-[20px] border-2 border-blue-900 bg-[linear-gradient(180deg,#eff6ff_0%,#dbeafe_100%)] px-4 py-3 text-[12px] font-semibold text-blue-950">
               최근 성적 추이는 평균 등급과 백분위 평균을 함께 표시하고, 과목 비교는 국어·수학·탐구는 백분위 기준, 영어·한국사는 등급 기준으로 비교합니다.
             </div>
           </>
         )}
       </section>
 
-      <section className="space-y-4">
+      <section className="space-y-4 rounded-[30px] border-2 border-blue-950 bg-[linear-gradient(180deg,rgba(255,255,255,0.98)_0%,rgba(239,246,255,0.92)_100%)] p-5 shadow-[0_22px_56px_rgba(15,23,42,0.10)] sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-extrabold tracking-tight text-slate-950">
             학종 적합성 검사 결과
@@ -1197,22 +1920,22 @@ export default function DashboardPage() {
 
           <Link
             href="/student/hakjong-fit"
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            className="inline-flex h-10 items-center justify-center rounded-xl border-2 border-blue-950 bg-[linear-gradient(180deg,#ffffff_0%,#dbeafe_100%)] px-4 text-sm font-bold text-blue-950 shadow-sm transition hover:brightness-[0.98]"
           >
             결과 보기
           </Link>
         </div>
 
         {isHakjongLoading ? (
-          <div className="rounded-[24px] border border-slate-200 bg-white p-6 text-sm font-semibold text-slate-600 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+          <div className="rounded-[24px] border-2 border-blue-950 bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)] p-6 text-sm font-semibold text-blue-950 shadow-[0_14px_36px_rgba(15,23,42,0.10)]">
             학종 검사 결과를 불러오는 중입니다...
           </div>
         ) : hakjongLoadError ? (
-          <div className="rounded-[24px] border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+          <div className="rounded-[24px] border-2 border-red-500 bg-[linear-gradient(180deg,#fff1f2_0%,#ffe4e6_100%)] p-6 text-sm font-semibold text-red-700 shadow-[0_14px_36px_rgba(15,23,42,0.10)]">
             {hakjongLoadError}
           </div>
         ) : hakjongDomains.length === 0 ? (
-          <div className="rounded-[24px] border border-dashed border-slate-300 bg-white p-8 text-center shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+          <div className="rounded-[24px] border-2 border-dashed border-blue-400 bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)] p-8 text-center shadow-[0_14px_36px_rgba(15,23,42,0.10)]">
             <p className="text-base font-bold text-slate-900">
               아직 완료된 학종 적합성 검사 결과가 없습니다.
             </p>

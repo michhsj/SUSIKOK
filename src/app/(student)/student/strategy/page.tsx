@@ -1,7 +1,7 @@
-//src/app/(student)/student/strategy/page.tsx
 import { redirect } from "next/navigation";
 import { getCurrentUserOrRedirect } from "@/lib/auth/getCurrentUser";
 import { hasActiveAnalysisMembership } from "@/lib/membership";
+import StrategyPageClient from "../_components/StrategyPageClient";
 
 export default async function StudentStrategyPage() {
   const user = await getCurrentUserOrRedirect();
@@ -30,11 +30,8 @@ export default async function StudentStrategyPage() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-6">
-          <p className="text-sm text-slate-600">
-            추후 대학 추천, 지원 전략 요약, 주의 구간, 대학별 환산점수 비교 결과 등의
-            분석 내용이 이 영역에 표시될 예정입니다.
-          </p>
+        <div className="mt-6">
+          <StrategyPageClient />
         </div>
       </section>
     </div>

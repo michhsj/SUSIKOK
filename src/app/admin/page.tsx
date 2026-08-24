@@ -14,6 +14,7 @@ import {
   ADMIN_SESSION_COOKIE,
   verifyAdminSessionToken,
 } from "@/lib/auth/admin-session";
+import AdminUploadCenter from "./_components/AdminUploadCenter";
 
 type StatTone = "blue" | "green" | "amber" | "pink";
 
@@ -24,16 +25,6 @@ type StatCard = {
   tone: StatTone;
   description: string;
   note?: string;
-};
-
-type QuickActionTone = "blue" | "green" | "amber" | "pink";
-
-type QuickAction = {
-  title: string;
-  description: string;
-  href: string;
-  buttonLabel: string;
-  tone: QuickActionTone;
 };
 
 type CheckItem = {
@@ -50,41 +41,6 @@ type ActivityItemType = {
   at: Date;
   tone: "blue" | "green" | "amber" | "pink";
 };
-
-const quickActions: QuickAction[] = [
-  {
-    title: "학종 적합성 평가 문항",
-    description:
-      "기준 엑셀 양식을 업로드하여 평가 문항 DB를 신규 등록하거나 수정합니다.",
-    href: "/admin/uploads/evaluation-questions",
-    buttonLabel: "업로드 바로가기",
-    tone: "blue",
-  },
-  {
-    title: "수시 통합DB",
-    description:
-      "대학·전형·모집단위 기준 데이터를 업로드하고 기존 데이터를 수정 반영합니다.",
-    href: "/admin/uploads/admissions-db",
-    buttonLabel: "업로드 바로가기",
-    tone: "green",
-  },
-  {
-    title: "교과 · 과목",
-    description:
-      "교과군, 과목명, 반영 과목 매핑 기준 파일을 업로드하여 반영합니다.",
-    href: "/admin/uploads/subjects",
-    buttonLabel: "업로드 바로가기",
-    tone: "amber",
-  },
-  {
-    title: "학생 DB업로드",
-    description:
-      "학생 다건 업로드, 중복 검출, 수정 대상 분리, 오류 행 리포트를 처리합니다.",
-    href: "/admin/uploads/students",
-    buttonLabel: "업로드 바로가기",
-    tone: "pink",
-  },
-];
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("ko-KR").format(value);
@@ -153,39 +109,6 @@ function panelToneClass(tone: "blue" | "green" | "amber" | "pink") {
       return "border-amber-200 bg-amber-50/60";
     case "pink":
       return "border-pink-200 bg-pink-50/60";
-  }
-}
-
-function quickActionToneClass(tone: QuickActionTone) {
-  switch (tone) {
-    case "blue":
-      return {
-        card: "border-blue-200 bg-blue-50/70",
-        pill: "bg-white text-blue-700 ring-1 ring-inset ring-blue-200",
-        button:
-          "border-2 border-blue-900 bg-white text-blue-900 hover:bg-blue-100 hover:border-blue-950",
-      };
-    case "green":
-      return {
-        card: "border-emerald-200 bg-emerald-50/70",
-        pill: "bg-white text-emerald-700 ring-1 ring-inset ring-emerald-200",
-        button:
-          "border-2 border-blue-900 bg-white text-blue-900 hover:bg-emerald-100 hover:border-blue-950",
-      };
-    case "amber":
-      return {
-        card: "border-amber-200 bg-amber-50/70",
-        pill: "bg-white text-amber-700 ring-1 ring-inset ring-amber-200",
-        button:
-          "border-2 border-blue-900 bg-white text-blue-900 hover:bg-amber-100 hover:border-blue-950",
-      };
-    case "pink":
-      return {
-        card: "border-pink-200 bg-pink-50/70",
-        pill: "bg-white text-pink-700 ring-1 ring-inset ring-pink-200",
-        button:
-          "border-2 border-blue-900 bg-white text-blue-900 hover:bg-pink-100 hover:border-blue-950",
-      };
   }
 }
 
@@ -306,47 +229,17 @@ function ShortcutButton({
   );
 }
 
-function QuickActionCard({ item }: { item: QuickAction }) {
-  const tone = quickActionToneClass(item.tone);
-
-  return (
-    <div
-      className={`rounded-[22px] border p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition-all duration-300 hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)] ${tone.card}`}
-    >
-      <div className="flex h-full flex-col">
-        <div
-          className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${tone.pill}`}
-        >
-          Upload
-        </div>
-        <h3 className="mt-4 text-lg font-semibold tracking-tight text-slate-900">
-          {item.title}
-        </h3>
-        <p className="mt-3 flex-1 text-sm leading-6 text-slate-600">
-          {item.description}
-        </p>
-        <Link
-          href={item.href}
-          className={`mt-5 inline-flex h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold transition ${tone.button}`}
-        >
-          {item.buttonLabel}
-        </Link>
-      </div>
-    </div>
-  );
-}
-
 function CheckItemCard({ item }: { item: CheckItem }) {
   return (
-    <div className={`rounded-[20px] border p-4 ${checkToneClass(item.tone)}`}>
-      <div className="flex items-start justify-between gap-4">
+    <div className={`h-full rounded-[20px] border p-4 ${checkToneClass(item.tone)}`}>
+      <div className="flex h-full flex-col justify-between gap-4">
         <div>
           <div className="text-sm font-semibold text-slate-900">{item.title}</div>
           <div className="mt-2 text-sm leading-6 text-slate-600">
             {item.description}
           </div>
         </div>
-        <div className="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-bold text-slate-900 shadow-sm ring-1 ring-slate-200">
+        <div className="w-fit rounded-full bg-white px-3 py-1 text-sm font-bold text-slate-900 shadow-sm ring-1 ring-slate-200">
           {item.value}
         </div>
       </div>
@@ -683,20 +576,19 @@ export default async function AdminDashboardPage() {
         <section className="relative overflow-hidden rounded-[30px] border border-blue-200 bg-white/90 p-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(59,130,246,0.10),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(16,185,129,0.08),_transparent_30%)]" />
           <div className="relative flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
-<div className="max-w-3xl">
-  <div className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
-    ADMIN DASHBOARD
-  </div>
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
+                ADMIN DASHBOARD
+              </div>
 
-  <h1 className="mt-16 whitespace-nowrap text-2xl font-bold tracking-tight leading-[1.9] text-slate-950 sm:text-3xl xl:text-4xl">
-    관리자 메인 대시보드
-  </h1>
+              <h1 className="mt-16 whitespace-nowrap text-2xl font-bold tracking-tight leading-[1.9] text-slate-950 sm:text-3xl xl:text-4xl">
+                관리자 메인 대시보드
+              </h1>
 
-  <p className="mt-8 max-w-2xl text-sm leading-[2.1] text-slate-600 sm:text-base">
-    실제 DB 기준 학생 업로드, 결제 주문, 활성 이용권, 입시 데이터 현황을 확인할 수 있는 관리자 첫 화면입니다.
-  </p>
-</div>
-
+              <p className="mt-8 max-w-2xl text-sm leading-[2.1] text-slate-600 sm:text-base">
+                실제 DB 기준 학생 업로드, 결제 주문, 활성 이용권, 입시 데이터 현황을 확인할 수 있는 관리자 첫 화면입니다.
+              </p>
+            </div>
 
             <div className="flex w-full flex-col gap-4 xl:max-w-xl">
               <div className="flex justify-end">
@@ -748,7 +640,7 @@ export default async function AdminDashboardPage() {
             title="핵심 관리 바로가기"
             description="학생 정보 관리와 대학 환산 반영 작업으로 빠르게 이동할 수 있도록 구성했습니다."
           />
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-3">
             <ShortcutButton
               href="/admin/students"
               title="학생 관리 페이지"
@@ -760,39 +652,31 @@ export default async function AdminDashboardPage() {
               title="대학 환산 반영 페이지"
               description="대학·전형·모집단위 기준 환산 규칙 확인, 반영, 재계산 관리"
             />
+            <ShortcutButton
+              href="/admin/popup"
+              title="팝업 설정 페이지"
+              description="메인 페이지 팝업 이미지와 노출 설정 관리"
+            />
           </div>
         </section>
 
-        <section className="mt-10 grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
-          <div
-            className={`rounded-[30px] border p-6 shadow-sm ${panelToneClass("green")}`}
-          >
-            <SectionTitle
-              eyebrow="Quick Actions"
-              title="빠른 작업"
-              description="이전에 사용한 엑셀 기준 업로드 흐름을 우선 배치했습니다."
-            />
-            <div className="grid gap-4 md:grid-cols-2">
-              {quickActions.map((item) => (
-                <QuickActionCard key={item.title} item={item} />
-              ))}
-            </div>
+        <section
+          className={`mt-10 rounded-[30px] border p-6 shadow-sm ${panelToneClass("amber")}`}
+        >
+          <SectionTitle
+            eyebrow="Operations"
+            title="운영 체크"
+            description="현재 스키마에서 정확히 확인 가능한 운영 항목만 연결했습니다."
+          />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {checks.map((item) => (
+              <CheckItemCard key={item.title} item={item} />
+            ))}
           </div>
+        </section>
 
-          <div
-            className={`rounded-[30px] border p-6 shadow-sm ${panelToneClass("amber")}`}
-          >
-            <SectionTitle
-              eyebrow="Operations"
-              title="운영 체크"
-              description="현재 스키마에서 정확히 확인 가능한 운영 항목만 연결했습니다."
-            />
-            <div className="space-y-4">
-              {checks.map((item) => (
-                <CheckItemCard key={item.title} item={item} />
-              ))}
-            </div>
-          </div>
+        <section className="mt-10">
+          <AdminUploadCenter />
         </section>
 
         <section

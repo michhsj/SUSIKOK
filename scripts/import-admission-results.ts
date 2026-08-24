@@ -5,7 +5,6 @@ import path from "node:path";
 import * as XLSX from "xlsx";
 import { PrismaClient } from "@prisma/client";
 
-
 const db = new PrismaClient();
 
 const SHEET_NAME = "수시통합";
@@ -275,6 +274,61 @@ function toUpdateData(createData: AdmissionCreateData) {
   return { ...createData };
 }
 
+async function deleteExistingAdmissionResults() {
+  const existingRows = await db.admissionResult.findMany({
+    where: {
+      admissionYear: ADMISSION_YEAR,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const admissionResultIds = existingRows.map((row) => row.id);
+
+  if (admissionResultIds.length === 0) {
+    console.log(`[DELETE] admissionYear=${ADMISSION_YEAR} 기존 데이터 없음`);
+    return {
+      deletedAdmissionResults: 0,
+      deletedAnalysisResults: 0,
+      deletedSavedRecruitmentUnits: 0,
+    };
+  }
+
+  const [deletedAnalysisResults, deletedSavedRecruitmentUnits, deletedAdmissionResults] =
+    await db.$transaction([
+      db.studentAdmissionAnalysisResult.deleteMany({
+        where: {
+          admissionResultId: { in: admissionResultIds },
+        },
+      }),
+      db.studentSavedRecruitmentUnit.deleteMany({
+        where: {
+          admissionResultId: { in: admissionResultIds },
+        },
+      }),
+      db.admissionResult.deleteMany({
+        where: {
+          id: { in: admissionResultIds },
+        },
+      }),
+    ]);
+
+  console.log(
+    `[DELETE] studentAdmissionAnalysisResult 삭제: ${deletedAnalysisResults.count}`
+  );
+  console.log(
+    `[DELETE] studentSavedRecruitmentUnit 삭제: ${deletedSavedRecruitmentUnits.count}`
+  );
+  console.log(`[DELETE] admissionResult 삭제: ${deletedAdmissionResults.count}`);
+
+  return {
+    deletedAdmissionResults: deletedAdmissionResults.count,
+    deletedAnalysisResults: deletedAnalysisResults.count,
+    deletedSavedRecruitmentUnits: deletedSavedRecruitmentUnits.count,
+  };
+}
+
 async function main() {
   const inputPath = process.argv[2];
 
@@ -330,6 +384,8 @@ async function main() {
   console.log(`header count: ${headers.length}`);
   console.log("headers:", headers);
   console.log(`data row count: ${rows.length}`);
+
+  await deleteExistingAdmissionResults();
 
   let inserted = 0;
   let updated = 0;
@@ -406,7 +462,11 @@ async function main() {
     }
   }
 
-  const total = await db.admissionResult.count();
+  const total = await db.admissionResult.count({
+    where: {
+      admissionYear: ADMISSION_YEAR,
+    },
+  });
 
   console.log("");
   console.log("[DONE] import-admission-results");
@@ -414,7 +474,7 @@ async function main() {
   console.log(`updated: ${updated}`);
   console.log(`skipped: ${skipped}`);
   console.log(`failed: ${failed}`);
-  console.log(`current total in admission_results: ${total}`);
+  console.log(`current total in admission_results(${ADMISSION_YEAR}): ${total}`);
 }
 
 main()

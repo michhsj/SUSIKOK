@@ -7,7 +7,10 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "import:subject-catalog": "tsx scripts/import-subject-catalog.ts"
+    "import:subject-catalog": "tsx scripts/import-subject-catalog.ts",
+    "import:admission-results": "tsx scripts/import-admission-results.ts",
+    "backfill:admission-analysis": "tsx scripts/backfill-student-admission-analysis.ts",
+    "backfill:admission-analysis:dry": "cross-env BACKFILL_DRY_RUN=1 tsx scripts/backfill-student-admission-analysis.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
@@ -31,6 +34,7 @@
     "@types/pg": "^8.15.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "prisma": "^7.8.0",
